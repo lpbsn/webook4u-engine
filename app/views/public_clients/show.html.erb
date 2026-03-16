@@ -1,0 +1,122 @@
+<h1><%= @client.name %></h1>
+
+<hr>
+
+<!-- ===================================================== -->
+<!-- RÉCAPITULATIF DE LA SÉLECTION UTILISATEUR -->
+<!-- ===================================================== -->
+
+<h2>Votre sélection</h2>
+
+<p>
+<strong>Prestation :</strong>
+<%= @selected_service&.name || "—" %>
+</p>
+
+<p>
+<strong>Date :</strong>
+<%= @date.present? ? @date.strftime("%d/%m/%Y") : "—" %>
+</p>
+
+<p>
+<strong>Créneau :</strong>
+—
+</p>
+
+<hr>
+
+<!-- ===================================================== -->
+<!-- ÉTAPE 1 : CHOIX DE LA PRESTATION -->
+<!-- ===================================================== -->
+
+<h2>1. Choisissez une prestation</h2>
+
+<div>
+  <% @services.each do |service| %>
+    <% selected = @selected_service&.id == service.id %>
+
+    <%= form_with url: public_client_path(@client.slug), method: :get, local: true do %>
+      <%= hidden_field_tag :service_id, service.id %>
+
+      <%= submit_tag service.name,
+          style: selected ? "font-weight:bold; border:2px solid black;" : "" %>
+    <% end %>
+  <% end %>
+</div>
+
+<!-- ===================================================== -->
+<!-- ÉTAPE 2 : CHOIX DE LA DATE -->
+<!-- ===================================================== -->
+
+<% if @selected_service.present? %>
+
+<hr>
+
+<h2>2. Choisissez une date</h2>
+
+<p>
+<strong>Prestation sélectionnée :</strong>
+<%= @selected_service.name %>
+</p>
+
+<p>
+<strong>Durée :</strong>
+<%= @selected_service.duration_minutes %> minutes
+</p>
+
+<p>
+<strong>Prix :</strong>
+<%= number_to_currency(@selected_service.price_cents, unit: "€") %>
+</p>
+
+<%= form_with url: public_client_path(@client.slug), method: :get, local: true do %>
+
+  <%= hidden_field_tag :service_id, @selected_service.id %>
+
+  <div>
+    <%= label_tag :date, "Date" %><br>
+    <%= date_field_tag :date, params[:date], required: true %>
+  </div>
+
+  <br>
+
+  <%= submit_tag "Voir les créneaux disponibles" %>
+
+<% end %>
+
+<% end %>
+
+<!-- ===================================================== -->
+<!-- ÉTAPE 3 : CHOIX DU CRÉNEAU -->
+<!-- ===================================================== -->
+
+<% if @selected_service.present? && @date.present? %>
+
+<hr>
+
+<h2>3. Choisissez un créneau</h2>
+
+<p>
+<strong>Prestation :</strong>
+<%= @selected_service.name %>
+</p>
+
+<p>
+<strong>Date :</strong>
+<%= @date.strftime("%d/%m/%Y") %>
+</p>
+
+<% if @slots.any? %>
+  <div>
+    <% @slots.each do |slot| %>
+      <%= form_with url: new_service_booking_path(@client.slug, @selected_service), method: :get, local: true do %>
+        <%= hidden_field_tag :start_time, slot %>
+        <%= submit_tag slot.strftime("%H:%M") %>
+      <% end %>
+    <% end %>
+  </div>
+<% else %>
+  <p>Aucun créneau n'est disponible pour cette date. Veuillez choisir une autre date.</p>
+<% end %>
+
+<% end %>

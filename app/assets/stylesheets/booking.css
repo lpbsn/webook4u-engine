@@ -178,6 +178,10 @@ body.booking-body {
   font-size: 14px;
 }
 
+.booking-date-input {
+  max-width: 260px;
+}
+
 .field-input:focus-visible {
   outline: none;
   border-color: var(--booking-text);

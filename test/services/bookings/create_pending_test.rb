@@ -47,6 +47,7 @@ class Bookings::CreatePendingTest < ActiveSupport::TestCase
 
     assert_not result.success?
     assert_nil result.booking
+    assert_equal Bookings::Errors::INVALID_SLOT, result.error_code
     assert_equal "Le créneau sélectionné est invalide.", result.error_message
   end
 
@@ -62,6 +63,7 @@ class Bookings::CreatePendingTest < ActiveSupport::TestCase
 
       assert_not result.success?
       assert_nil result.booking
+      assert_equal Bookings::Errors::SLOT_NOT_BOOKABLE, result.error_code
       assert_equal "Le créneau sélectionné n'est pas réservable.", result.error_message
     end
   end
@@ -88,6 +90,7 @@ class Bookings::CreatePendingTest < ActiveSupport::TestCase
 
       assert_not result.success?
       assert_nil result.booking
+      assert_equal Bookings::Errors::SLOT_UNAVAILABLE, result.error_code
       assert_equal "Le créneau sélectionné n'est plus disponible.", result.error_message
     end
   end
@@ -112,6 +115,7 @@ class Bookings::CreatePendingTest < ActiveSupport::TestCase
 
       assert_not result.success?
       assert_nil result.booking
+      assert_equal Bookings::Errors::SLOT_UNAVAILABLE, result.error_code
       assert_equal "Le créneau sélectionné n'est plus disponible.", result.error_message
     end
   end

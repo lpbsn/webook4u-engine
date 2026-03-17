@@ -2,7 +2,7 @@
 
 module Bookings
   class Confirm
-    Result = Struct.new(:success?, :booking, :error_message, keyword_init: true)
+    Result = Struct.new(:success?, :booking, :error_code, :error_message, keyword_init: true)
 
     def initialize(booking:, booking_params:)
       @booking = booking
@@ -10,19 +10,15 @@ module Bookings
     end
 
     def call
-      return failure("Cette réservation ne peut plus être confirmée. Veuillez recommencer votre sélection.") unless booking.pending?
-      return failure("Votre session a expiré. Veuillez renouveler votre réservation.") if booking.expired?
+      return failure(Errors::NOT_PENDING) unless booking.pending?
+      return failure(Errors::SESSION_EXPIRED) if booking.expired?
 
       SlotLock.with_lock(
         client_id: booking.client_id,
         booking_start_time: booking.booking_start_time
       ) do
-        if Availability.slot_blocked?(
-          client: booking.client,
-          booking_start_time: booking.booking_start_time,
-          exclude_booking_id: booking.id
-        )
-          return failure("Le créneau sélectionné n'est plus disponible.")
+        if Availability.slot_blocked?(client: booking.client, booking_start_time: booking.booking_start_time, exclude_booking_id: booking.id)
+          return failure(Errors::SLOT_UNAVAILABLE)
         end
 
         booking.update!(
@@ -35,9 +31,9 @@ module Bookings
 
       success(booking)
     rescue ActiveRecord::RecordInvalid
-      failure("Le formulaire contient des erreurs.")
+      failure(Errors::FORM_INVALID)
     rescue ActiveRecord::RecordNotUnique
-      failure("Le créneau sélectionné vient d'être réservé par un autre utilisateur.")
+      failure(Errors::SLOT_TAKEN_DURING_CONFIRM)
     end
 
     private
@@ -45,11 +41,16 @@ module Bookings
     attr_reader :booking, :booking_params
 
     def success(booking)
-      Result.new(success?: true, booking: booking, error_message: nil)
+      Result.new(success?: true, booking: booking, error_code: nil, error_message: nil)
     end
 
-    def failure(message)
-      Result.new(success?: false, booking: booking, error_message: message)
+    def failure(code)
+      Result.new(
+        success?: false,
+        booking: booking,
+        error_code: code,
+        error_message: Errors.message_for(code)
+      )
     end
   end
 end

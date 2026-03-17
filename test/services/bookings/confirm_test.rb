@@ -37,6 +37,7 @@ class Bookings::ConfirmTest < ActiveSupport::TestCase
 
       assert result.success?
       assert_equal booking, result.booking
+      assert_nil result.error_code
       assert_nil result.error_message
 
       booking.reload
@@ -69,6 +70,7 @@ class Bookings::ConfirmTest < ActiveSupport::TestCase
 
     assert_not result.success?
     assert_equal booking, result.booking
+    assert_equal Bookings::Errors::NOT_PENDING, result.error_code
     assert_equal "Cette réservation ne peut plus être confirmée. Veuillez recommencer votre sélection.", result.error_message
   end
 
@@ -92,6 +94,7 @@ class Bookings::ConfirmTest < ActiveSupport::TestCase
       ).call
 
       assert_not result.success?
+      assert_equal Bookings::Errors::SESSION_EXPIRED, result.error_code
       assert_equal "Votre session a expiré. Veuillez renouveler votre réservation.", result.error_message
     end
   end
@@ -128,6 +131,7 @@ class Bookings::ConfirmTest < ActiveSupport::TestCase
       ).call
 
       assert_not result.success?
+      assert_equal Bookings::Errors::SLOT_UNAVAILABLE, result.error_code
       assert_equal "Le créneau sélectionné n'est plus disponible.", result.error_message
 
       booking.reload
@@ -156,6 +160,7 @@ class Bookings::ConfirmTest < ActiveSupport::TestCase
 
       assert_not result.success?
       assert_equal booking, result.booking
+      assert_equal Bookings::Errors::FORM_INVALID, result.error_code
       assert_equal "Le formulaire contient des erreurs.", result.error_message
 
       booking.reload

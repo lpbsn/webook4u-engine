@@ -1,0 +1,27 @@
+<h1><%= @client.name %></h1>
+
+<hr>
+
+<!-- ===================================================== -->
+<!-- RÉCAPITULATIF DE LA SÉLECTION UTILISATEUR -->
+<!-- ===================================================== -->
+
+<h2>Votre sélection</h2>
+
+<p>
+  <strong>Prestation :</strong>
+  <%= public_client_selected_service_name(@selected_service) %>
+</p>
+
+<p>
+  <strong>Date :</strong>
+  <%= public_client_selected_date(@date) %>
+</p>
+
+<p>
+  <strong>Créneau :</strong>
+  —
+</p>
+
+<hr>
+

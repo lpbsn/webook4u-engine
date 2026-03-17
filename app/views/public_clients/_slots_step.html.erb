@@ -1,0 +1,33 @@
+<!-- ===================================================== -->
+<!-- ÉTAPE 3 : CHOIX DU CRÉNEAU -->
+<!-- ===================================================== -->
+
+<% if @selected_service.present? && @date.present? %>
+  <hr>
+
+  <h2>3. Choisissez un créneau</h2>
+
+  <p>
+    <strong>Prestation :</strong>
+    <%= @selected_service.name %>
+  </p>
+
+  <p>
+    <strong>Date :</strong>
+    <%= public_client_formatted_date(@date) %>
+  </p>
+
+  <% if @slots.any? %>
+    <div>
+      <% @slots.each do |slot| %>
+        <%= form_with url: new_service_booking_path(@client.slug, @selected_service), method: :get, local: true do %>
+          <%= hidden_field_tag :start_time, slot %>
+          <%= submit_tag public_client_slot_label(slot) %>
+        <% end %>
+      <% end %>
+    </div>
+  <% else %>
+    <p>Aucun créneau n'est disponible pour cette date. Veuillez choisir une autre date.</p>
+  <% end %>
+<% end %>
+

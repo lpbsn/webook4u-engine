@@ -2,7 +2,7 @@
 
 module Bookings
   class CreatePending
-    Result = Struct.new(:success?, :booking, :error_message, keyword_init: true)
+    Result = Struct.new(:success?, :booking, :error_code, :error_message, keyword_init: true)
 
     def initialize(client:, service:, booking_start_time:)
       @client = client
@@ -11,7 +11,7 @@ module Bookings
     end
 
     def call
-      return failure("Le créneau sélectionné est invalide.") if booking_start_time.nil?
+      return failure(Errors::INVALID_SLOT) if booking_start_time.nil?
 
       booking_end_time = booking_start_time + service.duration_minutes.minutes
       booking = nil
@@ -21,15 +21,11 @@ module Bookings
         booking_start_time: booking_start_time
       ) do
         if Availability.slot_blocked?(client: client, booking_start_time: booking_start_time)
-          return failure("Le créneau sélectionné n'est plus disponible.")
+          return failure(Errors::SLOT_UNAVAILABLE)
         end
 
-        unless Availability.valid_generated_slot?(
-          client: client,
-          service: service,
-          booking_start_time: booking_start_time
-        )
-          return failure("Le créneau sélectionné n'est pas réservable.")
+        unless Availability.valid_generated_slot?(client: client, service: service, booking_start_time: booking_start_time)
+          return failure(Errors::SLOT_NOT_BOOKABLE)
         end
 
         booking = Booking.create!(
@@ -44,7 +40,7 @@ module Bookings
 
       success(booking)
     rescue ActiveRecord::RecordInvalid
-      failure("Impossible de créer la réservation temporaire.")
+      failure(Errors::PENDING_CREATION_FAILED)
     end
 
     private
@@ -52,11 +48,16 @@ module Bookings
     attr_reader :client, :service, :booking_start_time
 
     def success(booking)
-      Result.new(success?: true, booking: booking, error_message: nil)
+      Result.new(success?: true, booking: booking, error_code: nil, error_message: nil)
     end
 
-    def failure(message)
-      Result.new(success?: false, booking: nil, error_message: message)
+    def failure(code)
+      Result.new(
+        success?: false,
+        booking: nil,
+        error_code: code,
+        error_message: Errors.message_for(code)
+      )
     end
   end
 end

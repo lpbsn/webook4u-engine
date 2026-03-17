@@ -425,12 +425,48 @@ class BookingTest < ActiveSupport::TestCase
       customer_email: "leo@example.com"
     )
 
-    assert Bookings::Availability.slot_blocked?(client: @client, booking_start_time: slot)
+    assert Bookings::Availability.slot_blocked?(client: @client, service: @service, booking_start_time: slot)
   end
 
   test "slot_blocked? returns false when no blocking booking exists" do
     slot = Time.zone.local(2026, 3, 16, 15, 0, 0)
 
-    assert_not Bookings::Availability.slot_blocked?(client: @client, booking_start_time: slot)
+    assert_not Bookings::Availability.slot_blocked?(client: @client, service: @service, booking_start_time: slot)
+  end
+
+  test "slot_blocked? returns true when overlapping booking has different start_time" do
+    existing_start = Time.zone.local(2026, 3, 16, 10, 0, 0)
+    existing_end   = existing_start + 30.minutes
+    overlapping_start = Time.zone.local(2026, 3, 16, 10, 15, 0)
+
+    @client.bookings.create!(
+      service: @service,
+      booking_start_time: existing_start,
+      booking_end_time: existing_end,
+      booking_status: :confirmed,
+      customer_first_name: "Léonard",
+      customer_last_name: "Boisson",
+      customer_email: "leo@example.com"
+    )
+
+    assert Bookings::Availability.slot_blocked?(client: @client, service: @service, booking_start_time: overlapping_start)
+  end
+
+  test "slot_blocked? treats end_equals_start as no overlap" do
+    existing_start = Time.zone.local(2026, 3, 16, 10, 0, 0)
+    existing_end   = existing_start + 30.minutes
+    border_start   = existing_end
+
+    @client.bookings.create!(
+      service: @service,
+      booking_start_time: existing_start,
+      booking_end_time: existing_end,
+      booking_status: :confirmed,
+      customer_first_name: "Léonard",
+      customer_last_name: "Boisson",
+      customer_email: "leo@example.com"
+    )
+
+    assert_not Bookings::Availability.slot_blocked?(client: @client, service: @service, booking_start_time: border_start)
   end
 end

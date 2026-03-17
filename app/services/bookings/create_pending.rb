@@ -16,11 +16,8 @@ module Bookings
       booking_end_time = booking_start_time + service.duration_minutes.minutes
       booking = nil
 
-      SlotLock.with_lock(
-        client_id: client.id,
-        booking_start_time: booking_start_time
-      ) do
-        if Availability.slot_blocked?(client: client, booking_start_time: booking_start_time)
+      SlotLock.with_lock(client_id: client.id, booking_start_time: booking_start_time) do
+        if Availability.slot_blocked?(client: client, service: service, booking_start_time: booking_start_time)
           return failure(Errors::SLOT_UNAVAILABLE)
         end
 

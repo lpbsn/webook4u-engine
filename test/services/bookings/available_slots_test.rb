@@ -129,4 +129,62 @@ class Bookings::AvailableSlotsTest < ActiveSupport::TestCase
       assert_includes slots, Time.zone.local(2026, 3, 16, 11, 30, 0)
     end
   end
+
+  test "blocks slots when blocking booking starts before first slot of the day" do
+    travel_to Time.zone.local(2026, 3, 15, 8, 0, 0) do
+      monday = Date.new(2026, 3, 16)
+
+      # Booking confirmé de 08:30 à 09:30 le même jour (avant le premier slot 09:00)
+      @client.bookings.create!(
+        service: @service,
+        booking_start_time: Time.zone.local(2026, 3, 16, 8, 30, 0),
+        booking_end_time: Time.zone.local(2026, 3, 16, 9, 30, 0),
+        booking_status: :confirmed,
+        customer_first_name: "Leonard",
+        customer_last_name: "Boisson",
+        customer_email: "leo@example.com"
+      )
+
+      slots = Bookings::AvailableSlots.new(
+        client: @client,
+        service: @service,
+        date: monday
+      ).call
+
+      # Le créneau 09:00–09:30 overlap le booking -> doit être exclu
+      assert_not_includes slots, Time.zone.local(2026, 3, 16, 9, 0, 0)
+
+      # Le créneau 09:30–10:00 ne chevauche plus -> doit rester disponible
+      assert_includes slots, Time.zone.local(2026, 3, 16, 9, 30, 0)
+    end
+  end
+
+  test "blocks first slot when booking from previous day overlaps into day" do
+    travel_to Time.zone.local(2026, 3, 16, 8, 0, 0) do
+      monday = Date.new(2026, 3, 16)
+
+      # Booking confirmé de la veille 23:30 à 09:30 le jour affiché
+      @client.bookings.create!(
+        service: @service,
+        booking_start_time: Time.zone.local(2026, 3, 15, 23, 30, 0),
+        booking_end_time:   Time.zone.local(2026, 3, 16, 9, 30, 0),
+        booking_status: :confirmed,
+        customer_first_name: "Leonard",
+        customer_last_name: "Boisson",
+        customer_email: "leo@example.com"
+      )
+
+      slots = Bookings::AvailableSlots.new(
+        client: @client,
+        service: @service,
+        date: monday
+      ).call
+
+      # Le créneau 09:00–09:30 overlap le booking -> doit être exclu
+      assert_not_includes slots, Time.zone.local(2026, 3, 16, 9, 0, 0)
+
+      # Le créneau 09:30–10:00 ne chevauche plus -> doit rester disponible
+      assert_includes slots, Time.zone.local(2026, 3, 16, 9, 30, 0)
+    end
+  end
 end

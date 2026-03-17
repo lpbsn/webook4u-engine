@@ -95,6 +95,65 @@ class Bookings::CreatePendingTest < ActiveSupport::TestCase
     end
   end
 
+  test "fails when new pending overlaps confirmed booking with different start_time" do
+    travel_to Time.zone.local(2026, 3, 15, 8, 0, 0) do
+      confirmed_start = Time.zone.local(2026, 3, 16, 10, 0, 0)
+      confirmed_end   = confirmed_start + 30.minutes
+
+      @client.bookings.create!(
+        service: @service,
+        booking_start_time: confirmed_start,
+        booking_end_time: confirmed_end,
+        booking_status: :confirmed,
+        customer_first_name: "Leonard",
+        customer_last_name: "Boisson",
+        customer_email: "leo@example.com"
+      )
+
+      overlapping_start = Time.zone.local(2026, 3, 16, 10, 15, 0)
+
+      result = Bookings::CreatePending.new(
+        client: @client,
+        service: @service,
+        booking_start_time: overlapping_start
+      ).call
+
+      assert_not result.success?
+      assert_nil result.booking
+      assert_equal Bookings::Errors::SLOT_UNAVAILABLE, result.error_code
+      assert_equal "Le créneau sélectionné n'est plus disponible.", result.error_message
+    end
+  end
+
+  test "allows pending when new slot starts at confirmed booking end" do
+    travel_to Time.zone.local(2026, 3, 15, 8, 0, 0) do
+      confirmed_start = Time.zone.local(2026, 3, 16, 10, 0, 0)
+      confirmed_end   = confirmed_start + 30.minutes
+
+      @client.bookings.create!(
+        service: @service,
+        booking_start_time: confirmed_start,
+        booking_end_time: confirmed_end,
+        booking_status: :confirmed,
+        customer_first_name: "Leonard",
+        customer_last_name: "Boisson",
+        customer_email: "leo@example.com"
+      )
+
+      border_start = confirmed_end
+
+      result = Bookings::CreatePending.new(
+        client: @client,
+        service: @service,
+        booking_start_time: border_start
+      ).call
+
+      assert result.success?
+      assert_equal "pending", result.booking.booking_status
+      assert_equal border_start, result.booking.booking_start_time
+    end
+  end
+
   test "fails when slot is already blocked by active pending booking" do
     travel_to Time.zone.local(2026, 3, 15, 8, 0, 0) do
       slot = Time.zone.local(2026, 3, 16, 12, 0, 0)

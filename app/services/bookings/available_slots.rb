@@ -13,7 +13,7 @@ module Bookings
     def call
       return [] unless BookingRules.bookable_day?(date)
 
-      slots.reject { |slot| blocked_slot_starts.include?(slot) }
+      slots.reject { |slot| slot_overlaps_blocking_booking?(slot) }
     end
 
     private
@@ -35,12 +35,24 @@ module Bookings
       result.reject { |slot| slot < BookingRules.minimum_bookable_time }
     end
 
-    def blocked_slot_starts
-      client.bookings
-            .blocking_slot
-            .where(booking_start_time: day_range)
-            .pluck(:booking_start_time)
-            .to_set
+    def blocking_intervals_for_day
+      @blocking_intervals_for_day ||= begin
+        day_start = date.in_time_zone.change(hour: BookingRules.day_start_hour, min: 0)
+        day_end   = date.in_time_zone.change(hour: BookingRules.day_end_hour,  min: 0)
+
+        client.bookings
+              .blocking_slot
+              .where("booking_start_time < ? AND booking_end_time > ?", day_end, day_start)
+              .pluck(:booking_start_time, :booking_end_time)
+      end
+    end
+
+    def slot_overlaps_blocking_booking?(slot_start)
+      slot_end = slot_start + service.duration_minutes.minutes
+
+      blocking_intervals_for_day.any? do |(booking_start, booking_end)|
+        Availability.overlap?(booking_start, booking_end, slot_start, slot_end)
+      end
     end
 
     def day_range

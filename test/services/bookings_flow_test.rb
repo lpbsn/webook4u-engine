@@ -45,7 +45,7 @@ class BookingsFlowTest < ActionDispatch::IntegrationTest
         start_time: "bonjour"
       )
 
-      assert_redirected_to public_client_path(@client.slug)
+      assert_redirected_to public_client_path(@client.slug, service_id: @service.id)
       follow_redirect!
       assert_match "créneau sélectionné est invalide", response.body.downcase
     end

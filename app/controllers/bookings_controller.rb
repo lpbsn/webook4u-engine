@@ -3,7 +3,7 @@ class BookingsController < ApplicationController
     @client = Client.find_by!(slug: params[:slug])
     @service = @client.services.find(params[:service_id])
 
-    booking_start_time = safe_time(params[:start_time])
+    booking_start_time = BookingInput.safe_time(params[:start_time])
 
     result = CreatePendingBooking.new(
       client: @client,
@@ -69,20 +69,5 @@ class BookingsController < ApplicationController
       :customer_last_name,
       :customer_email
     )
-  end
-
-  def safe_time(time_param)
-    return nil if time_param.blank?
-
-    begin
-      parsed_time = Time.zone.parse(time_param)
-      return nil if parsed_time.nil?
-      return nil if parsed_time < Time.zone.now
-      return nil if parsed_time > Time.zone.now + 30.days
-
-      parsed_time
-    rescue ArgumentError, TypeError
-      nil
-    end
   end
 end

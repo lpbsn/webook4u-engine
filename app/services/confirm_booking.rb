@@ -14,7 +14,7 @@ class ConfirmBooking
       client_id: booking.client_id,
       booking_start_time: booking.booking_start_time
     ) do
-      if Booking.slot_blocked?(
+      if BookingAvailability.slot_blocked?(
         client: booking.client,
         booking_start_time: booking.booking_start_time,
         exclude_booking_id: booking.id

@@ -1,0 +1,9 @@
+<h1>Réservation enregistrée</h1>
+
+<p><strong>Client :</strong> <%= @client.name %></p>
+<p><strong>Utilisateur :</strong> <%= @booking.customer_first_name %> <%= @booking.customer_last_name %></p>
+<p><strong>Email :</strong> <%= @booking.customer_email %></p>
+<p><strong>Prestation choisie :</strong> <%= @service.name %></p>
+<p><strong>Créneau choisi :</strong> <%= @booking.booking_start_time.strftime("%d/%m/%Y à %H:%M") %></p>
+
+<p><strong>Votre réservation a bien été confirmée !</strong></p>

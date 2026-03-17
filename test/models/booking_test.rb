@@ -388,12 +388,12 @@ class BookingTest < ActiveSupport::TestCase
       customer_email: "leo@example.com"
     )
 
-    assert Booking.slot_blocked?(client: @client, booking_start_time: slot)
+    assert BookingAvailability.slot_blocked?(client: @client, booking_start_time: slot)
   end
 
   test "slot_blocked? returns false when no blocking booking exists" do
     slot = Time.zone.local(2026, 3, 16, 15, 0, 0)
 
-    assert_not Booking.slot_blocked?(client: @client, booking_start_time: slot)
+    assert_not BookingAvailability.slot_blocked?(client: @client, booking_start_time: slot)
   end
 end

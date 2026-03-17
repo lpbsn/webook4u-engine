@@ -17,11 +17,11 @@ class CreatePendingBooking
       client_id: client.id,
       booking_start_time: booking_start_time
     ) do
-      if Booking.slot_blocked?(client: client, booking_start_time: booking_start_time)
+      if BookingAvailability.slot_blocked?(client: client, booking_start_time: booking_start_time)
         return failure("Le créneau sélectionné n'est plus disponible.")
       end
 
-      unless Booking.valid_generated_slot?(
+      unless BookingAvailability.valid_generated_slot?(
         client: client,
         service: service,
         booking_start_time: booking_start_time

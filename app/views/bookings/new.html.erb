@@ -1,0 +1,35 @@
+<h1><%= @client.name %></h1>
+<h2><%= @service.name %></h2>
+
+<p><strong>Créneau choisi :</strong> <%= @booking_start_time.strftime("%d/%m/%Y à %H:%M") %></p>
+
+<% if @booking.errors.any? %>
+  <div>
+    <h3>Le formulaire contient des erreurs :</h3>
+    <ul>
+      <% @booking.errors.full_messages.each do |message| %>
+        <li><%= message %></li>
+      <% end %>
+    </ul>
+  </div>
+<% end %>
+
+<%= form_with model: @booking, url: confirm_booking_path(@client.slug, @booking), method: :post do |form| %>  <div>
+    <%= form.label :customer_first_name, "Prénom" %><br>
+    <%= form.text_field :customer_first_name, required: true %>
+  </div>
+
+  <div>
+    <%= form.label :customer_last_name, "Nom" %><br>
+    <%= form.text_field :customer_last_name, required: true %>
+  </div>
+
+  <div>
+    <%= form.label :customer_email, "Email" %><br>
+    <%= form.email_field :customer_email, required: true %>
+  </div>
+
+  <div>
+    <%= form.submit "Valider la réservation" %>
+  </div>
+<% end %>

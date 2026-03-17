@@ -25,5 +25,12 @@
 
   <body>
     <%= yield %>
+    <% if notice.present? %>
+      <p><%= notice %></p>
+    <% end %>
+
+    <% if alert.present? %>
+      <p><%= alert %></p>
+    <% end %>
   </body>
 </html>

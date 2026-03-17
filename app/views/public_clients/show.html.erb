@@ -10,12 +10,12 @@
 
 <p>
 <strong>Prestation :</strong>
-<%= @selected_service&.name || "—" %>
+<%= public_client_selected_service_name(@selected_service) %>
 </p>
 
 <p>
 <strong>Date :</strong>
-<%= @date.present? ? @date.strftime("%d/%m/%Y") : "—" %>
+<%= public_client_selected_date(@date) %>
 </p>
 
 <p>
@@ -66,7 +66,7 @@
 
 <p>
 <strong>Prix :</strong>
-<%= number_to_currency(@selected_service.price_cents, unit: "€") %>
+<%= public_client_service_price(@selected_service) %>
 </p>
 
 <%= form_with url: public_client_path(@client.slug), method: :get, local: true do %>
@@ -103,7 +103,7 @@
 
 <p>
 <strong>Date :</strong>
-<%= @date.strftime("%d/%m/%Y") %>
+<%= public_client_formatted_date(@date) %>
 </p>
 
 <% if @slots.any? %>
@@ -111,7 +111,7 @@
     <% @slots.each do |slot| %>
       <%= form_with url: new_service_booking_path(@client.slug, @selected_service), method: :get, local: true do %>
         <%= hidden_field_tag :start_time, slot %>
-        <%= submit_tag slot.strftime("%H:%M") %>
+        <%= submit_tag public_client_slot_label(slot) %>
       <% end %>
     <% end %>
   </div>

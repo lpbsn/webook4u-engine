@@ -1,6 +1,6 @@
 require "test_helper"
 
-class ConfirmBookingTest < ActiveSupport::TestCase
+class Bookings::ConfirmTest < ActiveSupport::TestCase
   include ActiveSupport::Testing::TimeHelpers
 
   setup do
@@ -23,10 +23,10 @@ class ConfirmBookingTest < ActiveSupport::TestCase
         booking_start_time: Time.zone.local(2026, 3, 16, 10, 0, 0),
         booking_end_time: Time.zone.local(2026, 3, 16, 10, 30, 0),
         booking_status: :pending,
-        booking_expires_at: 5.minutes.from_now
+        booking_expires_at: BookingRules.pending_expires_at
       )
 
-      result = ConfirmBooking.new(
+      result = Bookings::Confirm.new(
         booking: booking,
         booking_params: {
           customer_first_name: "Léonard",
@@ -58,7 +58,7 @@ class ConfirmBookingTest < ActiveSupport::TestCase
       customer_email: "leo@example.com"
     )
 
-    result = ConfirmBooking.new(
+    result = Bookings::Confirm.new(
       booking: booking,
       booking_params: {
         customer_first_name: "Test",
@@ -82,7 +82,7 @@ class ConfirmBookingTest < ActiveSupport::TestCase
         booking_expires_at: 1.minute.ago
       )
 
-      result = ConfirmBooking.new(
+      result = Bookings::Confirm.new(
         booking: booking,
         booking_params: {
           customer_first_name: "Léonard",
@@ -105,7 +105,7 @@ class ConfirmBookingTest < ActiveSupport::TestCase
         booking_start_time: slot,
         booking_end_time: slot + 30.minutes,
         booking_status: :pending,
-        booking_expires_at: 5.minutes.from_now
+        booking_expires_at: BookingRules.pending_expires_at
       )
 
       @client.bookings.create!(
@@ -118,7 +118,7 @@ class ConfirmBookingTest < ActiveSupport::TestCase
         customer_email: "other@example.com"
       )
 
-      result = ConfirmBooking.new(
+      result = Bookings::Confirm.new(
         booking: booking,
         booking_params: {
           customer_first_name: "Léonard",
@@ -142,10 +142,10 @@ class ConfirmBookingTest < ActiveSupport::TestCase
         booking_start_time: Time.zone.local(2026, 3, 16, 14, 0, 0),
         booking_end_time: Time.zone.local(2026, 3, 16, 14, 30, 0),
         booking_status: :pending,
-        booking_expires_at: 5.minutes.from_now
+        booking_expires_at: BookingRules.pending_expires_at
       )
 
-      result = ConfirmBooking.new(
+      result = Bookings::Confirm.new(
         booking: booking,
         booking_params: {
           customer_first_name: "",

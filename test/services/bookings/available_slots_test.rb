@@ -1,6 +1,6 @@
 require "test_helper"
 
-class AvailableSlotsGeneratorTest < ActiveSupport::TestCase
+class Bookings::AvailableSlotsTest < ActiveSupport::TestCase
   include ActiveSupport::Testing::TimeHelpers
 
   setup do
@@ -20,7 +20,7 @@ class AvailableSlotsGeneratorTest < ActiveSupport::TestCase
     travel_to Time.zone.local(2026, 3, 13, 10, 0, 0) do
       saturday = Date.new(2026, 3, 14)
 
-      slots = AvailableSlotsGenerator.new(
+      slots = Bookings::AvailableSlots.new(
         client: @client,
         service: @service,
         date: saturday
@@ -34,7 +34,7 @@ class AvailableSlotsGeneratorTest < ActiveSupport::TestCase
     travel_to Time.zone.local(2026, 3, 15, 8, 0, 0) do
       monday = Date.new(2026, 3, 16)
 
-      slots = AvailableSlotsGenerator.new(
+      slots = Bookings::AvailableSlots.new(
         client: @client,
         service: @service,
         date: monday
@@ -50,7 +50,7 @@ class AvailableSlotsGeneratorTest < ActiveSupport::TestCase
     travel_to Time.zone.local(2026, 3, 16, 14, 10, 0) do
       monday = Date.new(2026, 3, 16)
 
-      slots = AvailableSlotsGenerator.new(
+      slots = Bookings::AvailableSlots.new(
         client: @client,
         service: @service,
         date: monday
@@ -76,7 +76,7 @@ class AvailableSlotsGeneratorTest < ActiveSupport::TestCase
         customer_email: "leo@example.com"
       )
 
-      slots = AvailableSlotsGenerator.new(
+      slots = Bookings::AvailableSlots.new(
         client: @client,
         service: @service,
         date: monday
@@ -95,10 +95,10 @@ class AvailableSlotsGeneratorTest < ActiveSupport::TestCase
         booking_start_time: Time.zone.local(2026, 3, 16, 11, 0, 0),
         booking_end_time: Time.zone.local(2026, 3, 16, 11, 30, 0),
         booking_status: :pending,
-        booking_expires_at: 10.minutes.from_now
+        booking_expires_at: BookingRules.pending_expires_at
       )
 
-      slots = AvailableSlotsGenerator.new(
+      slots = Bookings::AvailableSlots.new(
         client: @client,
         service: @service,
         date: monday
@@ -120,7 +120,7 @@ class AvailableSlotsGeneratorTest < ActiveSupport::TestCase
         booking_expires_at: 10.minutes.ago
       )
 
-      slots = AvailableSlotsGenerator.new(
+      slots = Bookings::AvailableSlots.new(
         client: @client,
         service: @service,
         date: monday

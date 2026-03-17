@@ -64,6 +64,17 @@ class BookingsFlowTest < ActionDispatch::IntegrationTest
     end
   end
 
+  test "new redirects when start_time is beyond max_future_days" do
+    travel_to Time.zone.local(2026, 3, 15, 8, 0, 0) do
+      time_beyond = (Time.zone.now + (BookingRules.max_future_days + 1).days).iso8601
+      get new_service_booking_path(@client.slug, @service, start_time: time_beyond)
+
+      assert_redirected_to public_client_path(@client.slug, service_id: @service.id)
+      follow_redirect!
+      assert_match /créneau sélectionné est invalide/i, response.body
+    end
+  end
+
   test "create confirms a valid pending booking" do
     travel_to Time.zone.local(2026, 3, 15, 8, 0, 0) do
       booking = @client.bookings.create!(
@@ -71,7 +82,7 @@ class BookingsFlowTest < ActionDispatch::IntegrationTest
         booking_start_time: Time.zone.local(2026, 3, 16, 11, 0, 0),
         booking_end_time: Time.zone.local(2026, 3, 16, 11, 30, 0),
         booking_status: :pending,
-        booking_expires_at: 5.minutes.from_now
+        booking_expires_at: BookingRules.pending_expires_at
       )
 
       post confirm_booking_path(@client.slug, booking), params: {

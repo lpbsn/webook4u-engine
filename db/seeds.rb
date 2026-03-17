@@ -8,32 +8,42 @@
 #     MovieGenre.find_or_create_by!(name: genre_name)
 #   end
 
-Booking.destroy_all
-Service.destroy_all
-Client.destroy_all
+if Rails.env.development?
+  salon = Client.find_or_create_by!(
+    slug: "salon-des-gate"
+  ) do |client|
+    client.name = "Le Salon Des Gâté"
+  end
 
-salon = Client.create!(
-  name: "Le Salon Des Gâté",
-  slug: "salon-des-gate"
-)
+  coach = Client.find_or_create_by!(
+    slug: "maigris-mon-gros"
+  ) do |client|
+    client.name = "Maigris Mon Gros"
+  end
 
-coach = Client.create!(
-  name: "Maigris Mon Gros",
-  slug: "maigris-mon-gros"
-)
+  [
+    { name: "Coupe homme", duration_minutes: 30, price_cents: 3000 },
+    { name: "Coupe femme", duration_minutes: 30, price_cents: 6000 },
+    { name: "Brushing", duration_minutes: 30, price_cents: 10000 }
+  ].each do |attrs|
+    salon.services.find_or_create_by!(
+      name: attrs[:name]
+    ) do |service|
+      service.duration_minutes = attrs[:duration_minutes]
+      service.price_cents = attrs[:price_cents]
+    end
+  end
 
-[
-  { name: "Coupe homme", duration_minutes: 30, price_cents: 30 },
-  { name: "Coupe femme", duration_minutes: 30, price_cents: 60 },
-  { name: "Brushing", duration_minutes: 30, price_cents: 100 }
-].each do |attrs|
-  salon.services.create!(attrs)
-end
-
-[
-  { name: "Séance individuelle", duration_minutes: 30, price_cents: 60 },
-  { name: "Bilan forme", duration_minutes: 30, price_cents: 30 },
-  { name: "Programme découverte", duration_minutes: 30, price_cents: 40 }
-].each do |attrs|
-  coach.services.create!(attrs)
+  [
+    { name: "Séance individuelle", duration_minutes: 30, price_cents: 6000 },
+    { name: "Bilan forme", duration_minutes: 30, price_cents: 3000 },
+    { name: "Programme découverte", duration_minutes: 30, price_cents: 4000 }
+  ].each do |attrs|
+    coach.services.find_or_create_by!(
+      name: attrs[:name]
+    ) do |service|
+      service.duration_minutes = attrs[:duration_minutes]
+      service.price_cents = attrs[:price_cents]
+    end
+  end
 end

@@ -238,7 +238,7 @@ class BookingTest < ActiveSupport::TestCase
         booking_start_time: Time.zone.local(2026, 3, 16, 10, 0, 0),
         booking_end_time: Time.zone.local(2026, 3, 16, 10, 30, 0),
         booking_status: :pending,
-        booking_expires_at: 5.minutes.from_now
+        booking_expires_at: BookingRules.pending_expires_at
       )
 
       assert_not booking.expired?
@@ -253,7 +253,7 @@ class BookingTest < ActiveSupport::TestCase
         booking_start_time: Time.zone.local(2026, 3, 16, 10, 0, 0),
         booking_end_time: Time.zone.local(2026, 3, 16, 10, 30, 0),
         booking_status: :pending,
-        booking_expires_at: 5.minutes.from_now
+        booking_expires_at: BookingRules.pending_expires_at
       )
 
       assert booking.confirmable?
@@ -310,7 +310,7 @@ class BookingTest < ActiveSupport::TestCase
         booking_start_time: Time.zone.local(2026, 3, 16, 9, 0, 0),
         booking_end_time: Time.zone.local(2026, 3, 16, 9, 30, 0),
         booking_status: :pending,
-        booking_expires_at: 5.minutes.from_now
+        booking_expires_at: BookingRules.pending_expires_at
       )
 
       expired_pending = @client.bookings.create!(
@@ -346,7 +346,7 @@ class BookingTest < ActiveSupport::TestCase
         booking_start_time: Time.zone.local(2026, 3, 16, 11, 0, 0),
         booking_end_time: Time.zone.local(2026, 3, 16, 11, 30, 0),
         booking_status: :pending,
-        booking_expires_at: 5.minutes.from_now
+        booking_expires_at: BookingRules.pending_expires_at
       )
 
       expired_pending = @client.bookings.create!(
@@ -375,6 +375,43 @@ class BookingTest < ActiveSupport::TestCase
     end
   end
 
+  # Ensures scope active_pending stays aligned with BookingRules.booking_expired?
+  test "active_pending scope is consistent with BookingRules.booking_expired?" do
+    now = Time.zone.local(2026, 3, 15, 12, 0, 0)
+    travel_to now do
+      past_booking = @client.bookings.create!(
+        service: @service,
+        booking_start_time: Time.zone.local(2026, 3, 16, 9, 0, 0),
+        booking_end_time: Time.zone.local(2026, 3, 16, 9, 30, 0),
+        booking_status: :pending,
+        booking_expires_at: 1.minute.ago
+      )
+      now_booking = @client.bookings.create!(
+        service: @service,
+        booking_start_time: Time.zone.local(2026, 3, 16, 9, 30, 0),
+        booking_end_time: Time.zone.local(2026, 3, 16, 10, 0, 0),
+        booking_status: :pending,
+        booking_expires_at: now
+      )
+      future_booking = @client.bookings.create!(
+        service: @service,
+        booking_start_time: Time.zone.local(2026, 3, 16, 10, 0, 0),
+        booking_end_time: Time.zone.local(2026, 3, 16, 10, 30, 0),
+        booking_status: :pending,
+        booking_expires_at: BookingRules.pending_expires_at
+      )
+
+      assert BookingRules.booking_expired?(past_booking, now: now), "past should be expired"
+      assert BookingRules.booking_expired?(now_booking, now: now), "expires_at == now should be expired"
+      assert_not BookingRules.booking_expired?(future_booking, now: now), "future should not be expired"
+
+      active_ids = Booking.active_pending.pluck(:id)
+      assert_not_includes active_ids, past_booking.id
+      assert_not_includes active_ids, now_booking.id
+      assert_includes active_ids, future_booking.id
+    end
+  end
+
   test "slot_blocked? returns true when slot is blocked by confirmed booking" do
     slot = Time.zone.local(2026, 3, 16, 14, 0, 0)
 
@@ -388,12 +425,12 @@ class BookingTest < ActiveSupport::TestCase
       customer_email: "leo@example.com"
     )
 
-    assert BookingAvailability.slot_blocked?(client: @client, booking_start_time: slot)
+    assert Bookings::Availability.slot_blocked?(client: @client, booking_start_time: slot)
   end
 
   test "slot_blocked? returns false when no blocking booking exists" do
     slot = Time.zone.local(2026, 3, 16, 15, 0, 0)
 
-    assert_not BookingAvailability.slot_blocked?(client: @client, booking_start_time: slot)
+    assert_not Bookings::Availability.slot_blocked?(client: @client, booking_start_time: slot)
   end
 end

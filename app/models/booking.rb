@@ -51,7 +51,7 @@ class Booking < ApplicationRecord
   # MÉTHODES MÉTIER
   # =========================================================
   def expired?
-    booking_expires_at.blank? || booking_expires_at <= Time.zone.now
+    BookingRules.booking_expired?(self)
   end
 
   def confirmable?

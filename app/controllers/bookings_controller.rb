@@ -3,9 +3,9 @@ class BookingsController < ApplicationController
     @client = Client.find_by!(slug: params[:slug])
     @service = @client.services.find(params[:service_id])
 
-    booking_start_time = BookingInput.safe_time(params[:start_time])
+    booking_start_time = Bookings::Input.safe_time(params[:start_time])
 
-    result = CreatePendingBooking.new(
+    result = Bookings::CreatePending.new(
       client: @client,
       service: @service,
       booking_start_time: booking_start_time
@@ -31,7 +31,7 @@ class BookingsController < ApplicationController
     @booking = @client.bookings.find(params[:id])
     @service = @booking.service
 
-    result = ConfirmBooking.new(
+    result = Bookings::Confirm.new(
       booking: @booking,
       booking_params: booking_params
     ).call

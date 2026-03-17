@@ -10,7 +10,7 @@ class PublicClientsController < ApplicationController
   # Tout se passe sur UNE SEULE PAGE.
   # =========================================================
   def show
-    page = PublicBookingPage.new(
+    page = Bookings::PublicPage.new(
       slug: params[:slug],
       service_id: params[:service_id],
       date_param: params[:date]

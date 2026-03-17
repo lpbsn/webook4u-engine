@@ -57,7 +57,7 @@ class BookingDuplicatesFlowTest < ActionDispatch::IntegrationTest
         booking_start_time: slot,
         booking_end_time: slot + 30.minutes,
         booking_status: :pending,
-        booking_expires_at: 5.minutes.from_now
+        booking_expires_at: BookingRules.pending_expires_at
       )
 
       assert_no_difference "Booking.count" do
@@ -110,7 +110,7 @@ class BookingDuplicatesFlowTest < ActionDispatch::IntegrationTest
         booking_start_time: slot,
         booking_end_time: slot + 30.minutes,
         booking_status: :pending,
-        booking_expires_at: 5.minutes.from_now
+        booking_expires_at: BookingRules.pending_expires_at
       )
 
       @client.bookings.create!(

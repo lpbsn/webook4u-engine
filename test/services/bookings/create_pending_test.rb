@@ -1,6 +1,6 @@
 require "test_helper"
 
-class CreatePendingBookingTest < ActiveSupport::TestCase
+class Bookings::CreatePendingTest < ActiveSupport::TestCase
   include ActiveSupport::Testing::TimeHelpers
 
   setup do
@@ -20,7 +20,7 @@ class CreatePendingBookingTest < ActiveSupport::TestCase
     travel_to Time.zone.local(2026, 3, 15, 8, 0, 0) do
       slot = Time.zone.local(2026, 3, 16, 10, 0, 0)
 
-      result = CreatePendingBooking.new(
+      result = Bookings::CreatePending.new(
         client: @client,
         service: @service,
         booking_start_time: slot
@@ -39,7 +39,7 @@ class CreatePendingBookingTest < ActiveSupport::TestCase
   end
 
   test "fails when booking_start_time is nil" do
-    result = CreatePendingBooking.new(
+    result = Bookings::CreatePending.new(
       client: @client,
       service: @service,
       booking_start_time: nil
@@ -54,7 +54,7 @@ class CreatePendingBookingTest < ActiveSupport::TestCase
     travel_to Time.zone.local(2026, 3, 15, 8, 0, 0) do
       invalid_slot = Time.zone.local(2026, 3, 16, 8, 0, 0)
 
-      result = CreatePendingBooking.new(
+      result = Bookings::CreatePending.new(
         client: @client,
         service: @service,
         booking_start_time: invalid_slot
@@ -80,7 +80,7 @@ class CreatePendingBookingTest < ActiveSupport::TestCase
         customer_email: "leo@example.com"
       )
 
-      result = CreatePendingBooking.new(
+      result = Bookings::CreatePending.new(
         client: @client,
         service: @service,
         booking_start_time: slot
@@ -101,10 +101,10 @@ class CreatePendingBookingTest < ActiveSupport::TestCase
         booking_start_time: slot,
         booking_end_time: slot + 30.minutes,
         booking_status: :pending,
-        booking_expires_at: 5.minutes.from_now
+        booking_expires_at: BookingRules.pending_expires_at
       )
 
-      result = CreatePendingBooking.new(
+      result = Bookings::CreatePending.new(
         client: @client,
         service: @service,
         booking_start_time: slot
@@ -128,7 +128,7 @@ class CreatePendingBookingTest < ActiveSupport::TestCase
         booking_expires_at: 1.minute.ago
       )
 
-      result = CreatePendingBooking.new(
+      result = Bookings::CreatePending.new(
         client: @client,
         service: @service,
         booking_start_time: slot

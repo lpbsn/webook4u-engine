@@ -40,10 +40,11 @@ module Bookings
         day_start = date.in_time_zone.change(hour: BookingRules.day_start_hour, min: 0)
         day_end   = date.in_time_zone.change(hour: BookingRules.day_end_hour,  min: 0)
 
-        client.bookings
-              .blocking_slot
-              .where("booking_start_time < ? AND booking_end_time > ?", day_end, day_start)
-              .pluck(:booking_start_time, :booking_end_time)
+        BlockingBookings.intervals_for_range(
+          client: client,
+          range_start: day_start,
+          range_end: day_end
+        )
       end
     end
 

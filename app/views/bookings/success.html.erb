@@ -1,9 +1,10 @@
-<h1>Réservation enregistrée</h1>
+<% content_for :booking_card_modifier, "booking-success" %>
 
-<p><strong>Client :</strong> <%= @client.name %></p>
-<p><strong>Utilisateur :</strong> <%= booking_customer_name(@booking) %></p>
-<p><strong>Email :</strong> <%= @booking.customer_email %></p>
-<p><strong>Prestation choisie :</strong> <%= @service.name %></p>
-<p><strong>Créneau choisi :</strong> <%= booking_formatted_slot(@booking) %></p>
-
-<p><strong>Votre réservation a bien été confirmée !</strong></p>
+<div class="booking-success-body">
+  <h1 class="booking-success-title">Votre réservation est confirmée</h1>
+  <p><strong>Client :</strong> <%= @client.name %></p>
+  <p><strong>Utilisateur :</strong> <%= booking_customer_name(@booking) %></p>
+  <p><strong>Email :</strong> <%= @booking.customer_email %></p>
+  <p><strong>Prestation :</strong> <%= @service.name %></p>
+  <p><strong>Créneau :</strong> <%= booking_formatted_slot(@booking) %></p>
+</div>

@@ -1,4 +1,5 @@
 class BookingsController < ApplicationController
+  layout "booking"
   def new
     @client = Client.find_by!(slug: params[:slug])
     @service = @client.services.find(params[:service_id])

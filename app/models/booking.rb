@@ -45,7 +45,6 @@ class Booking < ApplicationRecord
   # =========================================================
   scope :active_pending, -> { pending.where("booking_expires_at > ?", Time.zone.now) }
   scope :blocking_slot, -> { confirmed.or(active_pending) }
-  scope :for_slot, ->(booking_start_time) { where(booking_start_time: booking_start_time) }
 
   # =========================================================
   # MÉTHODES MÉTIER

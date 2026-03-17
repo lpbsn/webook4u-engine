@@ -6,11 +6,12 @@ module Bookings
       new_start = booking_start_time
       new_end   = booking_start_time + service.duration_minutes.minutes
 
-      scope = client.bookings
-                    .blocking_slot
-                    .where("booking_start_time < ? AND booking_end_time > ?", new_end, new_start)
-      scope = scope.where.not(id: exclude_booking_id) if exclude_booking_id.present?
-      scope.exists?
+      BlockingBookings.overlapping(
+        client: client,
+        start_time: new_start,
+        end_time: new_end,
+        exclude_booking_id: exclude_booking_id
+      ).exists?
     end
 
     def self.valid_generated_slot?(client:, service:, booking_start_time:)

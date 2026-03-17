@@ -1,4 +1,5 @@
 class PublicClientsController < ApplicationController
+  layout "booking"
   # =========================================================
   # PAGE PRINCIPALE DE RÉSERVATION
   #

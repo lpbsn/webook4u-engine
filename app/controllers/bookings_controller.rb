@@ -1,5 +1,8 @@
 class BookingsController < ApplicationController
   layout "booking"
+  before_action :enforce_rate_limit_for_pending_creation, only: :new
+  before_action :enforce_rate_limit_for_confirmation, only: :create
+
   def new
     @client = Client.find_by!(slug: params[:slug])
     @service = @client.services.find(params[:service_id])
@@ -63,6 +66,31 @@ class BookingsController < ApplicationController
   end
 
   private
+
+  def enforce_rate_limit_for_pending_creation
+    client = Client.find_by!(slug: params[:slug])
+    service = client.services.find(params[:service_id])
+    booking_start_time = Bookings::Input.safe_time(params[:start_time])
+
+    return if Bookings::RateLimit.allow_pending_creation?(ip: request.remote_ip, client_slug: client.slug)
+
+    redirect_to public_client_path(
+      client.slug,
+      service_id: service.id,
+      date: booking_start_time&.to_date
+    ),
+                alert: Bookings::RateLimit::MESSAGE
+    return
+  end
+
+  def enforce_rate_limit_for_confirmation
+    client = Client.find_by!(slug: params[:slug])
+
+    return if Bookings::RateLimit.allow_confirmation?(ip: request.remote_ip, client_slug: client.slug)
+
+    render plain: Bookings::RateLimit::MESSAGE, status: :too_many_requests
+    return
+  end
 
   def booking_params
     params.require(:booking).permit(

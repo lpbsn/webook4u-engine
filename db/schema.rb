@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_03_18_043805) do
+ActiveRecord::Schema[8.1].define(version: 2026_03_18_091500) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -20,6 +20,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_18_043805) do
     t.datetime "booking_start_time"
     t.string "booking_status"
     t.bigint "client_id", null: false
+    t.string "confirmation_token"
     t.datetime "created_at", null: false
     t.string "customer_email"
     t.string "customer_first_name"
@@ -30,6 +31,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_18_043805) do
     t.datetime "updated_at", null: false
     t.index ["client_id", "booking_start_time"], name: "index_bookings_on_client_and_start_time_confirmed", unique: true, where: "((booking_status)::text = 'confirmed'::text)"
     t.index ["client_id"], name: "index_bookings_on_client_id"
+    t.index ["confirmation_token"], name: "index_bookings_on_confirmation_token", unique: true
     t.index ["service_id"], name: "index_bookings_on_service_id"
   end
 

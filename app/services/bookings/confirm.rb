@@ -19,6 +19,7 @@ module Bookings
         end
 
         booking.update!(
+          confirmation_token: SecureRandom.uuid,
           customer_first_name: booking_params[:customer_first_name],
           customer_last_name: booking_params[:customer_last_name],
           customer_email: booking_params[:customer_email],

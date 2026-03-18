@@ -8,5 +8,5 @@ Rails.application.routes.draw do
   post "/:slug/bookings/:id/confirm", to: "bookings#create", as: :confirm_booking
 
   # page succès
-  get "/:slug/bookings/:id/success", to: "bookings#success", as: :booking_success
+  get "/:slug/bookings/:token/success", to: "bookings#success", as: :booking_success
 end

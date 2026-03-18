@@ -93,9 +93,8 @@ class BookingsFlowTest < ActionDispatch::IntegrationTest
         }
       }
 
-      assert_redirected_to booking_success_path(@client.slug, booking)
-
       booking.reload
+      assert_redirected_to booking_success_path(@client.slug, booking.confirmation_token)
       assert_equal "confirmed", booking.booking_status
       assert_equal "Léonard", booking.customer_first_name
       assert_equal "Boisson", booking.customer_last_name

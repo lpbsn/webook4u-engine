@@ -1,0 +1,209 @@
+# frozen_string_literal: true
+
+require "test_helper"
+
+class BookingsControllerTest < ActionDispatch::IntegrationTest
+  include ActiveSupport::Testing::TimeHelpers
+
+  setup do
+    @client = Client.create!(
+      name: "Le Salon Des gâté",
+      slug: "salon-des-gate"
+    )
+
+    @service = @client.services.create!(
+      name: "Coupe homme",
+      duration_minutes: 30,
+      price_cents: 2500
+    )
+  end
+
+  # =========================================================
+  # GET #new
+  # =========================================================
+
+  test "GET #new renders the page for a valid slot" do
+    travel_to Time.zone.local(2026, 3, 15, 8, 0, 0) do
+      slot = Time.zone.local(2026, 3, 16, 10, 0, 0)
+
+      assert_difference "Booking.count", 1 do
+        get new_service_booking_path(@client.slug, @service, start_time: slot)
+      end
+
+      assert_response :success
+
+      booking = Booking.last
+      assert_equal @client.id, booking.client_id
+      assert_equal @service.id, booking.service_id
+      assert_equal "pending", booking.booking_status
+      assert_equal slot, booking.booking_start_time
+    end
+  end
+
+  test "GET #new redirects to client page with alert when start_time is invalid" do
+    travel_to Time.zone.local(2026, 3, 15, 8, 0, 0) do
+      get new_service_booking_path(@client.slug, @service, start_time: "invalid")
+
+      assert_redirected_to public_client_path(@client.slug, service_id: @service.id)
+      follow_redirect!
+      assert_equal Bookings::Errors.message_for(Bookings::Errors::INVALID_SLOT), flash[:alert]
+    end
+  end
+
+  test "GET #new redirects to client page with alert when slot is unavailable" do
+    travel_to Time.zone.local(2026, 3, 15, 8, 0, 0) do
+      slot = Time.zone.local(2026, 3, 16, 10, 0, 0)
+
+      @client.bookings.create!(
+        service: @service,
+        booking_start_time: slot,
+        booking_end_time: slot + 30.minutes,
+        booking_status: :confirmed,
+        customer_first_name: "Jean",
+        customer_last_name: "Dupont",
+        customer_email: "jean@example.com"
+      )
+
+      assert_no_difference "Booking.count" do
+        get new_service_booking_path(@client.slug, @service, start_time: slot)
+      end
+
+      assert_redirected_to public_client_path(
+        @client.slug,
+        service_id: @service.id,
+        date: slot.to_date
+      )
+      follow_redirect!
+      assert_equal Bookings::Errors.message_for(Bookings::Errors::SLOT_UNAVAILABLE), flash[:alert]
+    end
+  end
+
+  # =========================================================
+  # POST #create
+  # =========================================================
+
+  test "POST #create confirms a valid pending booking and redirects to success" do
+    travel_to Time.zone.local(2026, 3, 15, 8, 0, 0) do
+      booking = @client.bookings.create!(
+        service: @service,
+        booking_start_time: Time.zone.local(2026, 3, 16, 11, 0, 0),
+        booking_end_time: Time.zone.local(2026, 3, 16, 11, 30, 0),
+        booking_status: :pending,
+        booking_expires_at: BookingRules.pending_expires_at
+      )
+
+      post confirm_booking_path(@client.slug, booking), params: {
+        booking: {
+          customer_first_name: "Léonard",
+          customer_last_name: "Boisson",
+          customer_email: "leo@example.com"
+        }
+      }
+
+      booking.reload
+      assert_redirected_to booking_success_path(@client.slug, booking.confirmation_token)
+      assert_equal "confirmed", booking.booking_status
+      assert_equal "Léonard", booking.customer_first_name
+      assert_equal "Boisson", booking.customer_last_name
+      assert_equal "leo@example.com", booking.customer_email
+    end
+  end
+
+  test "POST #create re-renders new with status 422 when form is invalid" do
+    travel_to Time.zone.local(2026, 3, 15, 8, 0, 0) do
+      booking = @client.bookings.create!(
+        service: @service,
+        booking_start_time: Time.zone.local(2026, 3, 16, 14, 0, 0),
+        booking_end_time: Time.zone.local(2026, 3, 16, 14, 30, 0),
+        booking_status: :pending,
+        booking_expires_at: BookingRules.pending_expires_at
+      )
+
+      post confirm_booking_path(@client.slug, booking), params: {
+        booking: {
+          customer_first_name: "",
+          customer_last_name: "",
+          customer_email: "not-an-email"
+        }
+      }
+
+      assert_response :unprocessable_entity
+
+      booking.reload
+      assert_equal "pending", booking.booking_status
+      assert_nil booking.customer_first_name
+    end
+  end
+
+  test "POST #create redirects to client page with alert when booking is not confirmable" do
+    travel_to Time.zone.local(2026, 3, 15, 8, 0, 0) do
+      booking = @client.bookings.create!(
+        service: @service,
+        booking_start_time: Time.zone.local(2026, 3, 16, 12, 0, 0),
+        booking_end_time: Time.zone.local(2026, 3, 16, 12, 30, 0),
+        booking_status: :pending,
+        booking_expires_at: 1.minute.ago
+      )
+
+      post confirm_booking_path(@client.slug, booking), params: {
+        booking: {
+          customer_first_name: "Léonard",
+          customer_last_name: "Boisson",
+          customer_email: "leo@example.com"
+        }
+      }
+
+      assert_redirected_to public_client_path(
+        @client.slug,
+        service_id: @service.id,
+        date: Date.new(2026, 3, 16)
+      )
+      follow_redirect!
+      assert_equal Bookings::Errors.message_for(Bookings::Errors::SESSION_EXPIRED), flash[:alert]
+
+      booking.reload
+      assert_equal "pending", booking.booking_status
+    end
+  end
+
+  # =========================================================
+  # GET #success
+  # =========================================================
+
+  test "GET #success displays success page for booking belonging to client" do
+    travel_to Time.zone.local(2026, 3, 15, 8, 0, 0) do
+      booking = @client.bookings.create!(
+        service: @service,
+        booking_start_time: Time.zone.local(2026, 3, 16, 15, 0, 0),
+        booking_end_time: Time.zone.local(2026, 3, 16, 15, 30, 0),
+        booking_status: :confirmed,
+        confirmation_token: SecureRandom.uuid,
+        customer_first_name: "Léonard",
+        customer_last_name: "Boisson",
+        customer_email: "leo@example.com"
+      )
+
+      get booking_success_path(@client.slug, booking.confirmation_token)
+
+      assert_response :success
+    end
+  end
+
+  test "GET #success returns 404 when booking does not belong to client" do
+    other_client = Client.create!(name: "Autre", slug: "autre-client")
+    booking = @client.bookings.create!(
+      service: @service,
+      booking_start_time: Time.zone.local(2026, 3, 16, 16, 0, 0),
+      booking_end_time: Time.zone.local(2026, 3, 16, 16, 30, 0),
+      booking_status: :confirmed,
+      confirmation_token: SecureRandom.uuid,
+      customer_first_name: "Léonard",
+      customer_last_name: "Boisson",
+      customer_email: "leo@example.com"
+    )
+
+    get booking_success_path(other_client.slug, booking.confirmation_token)
+
+    assert_response :not_found
+  end
+end

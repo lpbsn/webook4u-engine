@@ -38,7 +38,7 @@ class BookingsController < ApplicationController
     ).call
 
     if result.success?
-      redirect_to booking_success_path(@client.slug, @booking)
+      redirect_to booking_success_path(@client.slug, @booking.confirmation_token)
     else
       if @booking.errors.any?
         @booking_start_time = @booking.booking_start_time
@@ -58,7 +58,7 @@ class BookingsController < ApplicationController
 
   def success
     @client = Client.find_by!(slug: params[:slug])
-    @booking = @client.bookings.find(params[:id])
+    @booking = @client.bookings.find_by!(confirmation_token: params[:token])
     @service = @booking.service
   end
 

@@ -12,7 +12,7 @@ module PublicClientsHelper
   end
 
   def public_client_service_price(service)
-    number_to_currency(service.price_cents.to_f / 100, unit: "€")
+    format_price_cents(service.price_cents)
   end
 
   def public_client_slot_label(slot_time)

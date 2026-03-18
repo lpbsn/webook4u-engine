@@ -6,5 +6,6 @@
   <p><strong>Utilisateur :</strong> <%= booking_customer_name(@booking) %></p>
   <p><strong>Email :</strong> <%= @booking.customer_email %></p>
   <p><strong>Prestation :</strong> <%= @service.name %></p>
+  <p><strong>Montant à payer :</strong> <%= format_price_cents(@service.price_cents) %></p>
   <p><strong>Créneau :</strong> <%= booking_formatted_slot(@booking) %></p>
 </div>

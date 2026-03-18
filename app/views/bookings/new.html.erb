@@ -3,6 +3,10 @@
   <p class="booking-header-subtitle"><%= @service.name %></p>
 </div>
 
+<p class="booking-section-meta">
+  Montant à payer : <%= format_price_cents(@service.price_cents) %>
+</p>
+
 <div class="booking-summary">
   <h2 class="booking-section-title">Créneau choisi</h2>
   <div class="booking-fields">

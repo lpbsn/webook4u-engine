@@ -183,7 +183,7 @@ class BookingTest < ActiveSupport::TestCase
     )
 
     assert_not booking.valid?
-    assert booking.errors[:booking_end_time].any?
+    assert_includes booking.errors[:booking_end_time], "must be after booking_start_time"
   end
 
   test "service must belong to the same client" do
@@ -208,7 +208,7 @@ class BookingTest < ActiveSupport::TestCase
     )
 
     assert_not booking.valid?
-    assert booking.errors[:service].any?
+    assert_includes booking.errors[:service], "must belong to the same client"
   end
 
   # =========================================================

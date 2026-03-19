@@ -51,7 +51,16 @@ module Bookings
 
     def self.increment_with_ttl(key, expires_in:)
       if Rails.cache.respond_to?(:increment)
-        value = Rails.cache.increment(key, 1, expires_in: expires_in, initial: 0)
+        value = nil
+        begin
+          value = Rails.cache.increment(key, 1, expires_in: expires_in, initial: 0)
+        rescue ArgumentError, TypeError => e
+          # Certains cache stores ne supportent pas les keywords `expires_in:` / `initial:`
+          # (ou ont une signature différente). On retombe alors sur le fallback existant.
+          Rails.logger.debug(
+            "Bookings::RateLimit cache increment failed; key=#{key} error_class=#{e.class}"
+          )
+        end
         return value unless value.nil?
       end
 

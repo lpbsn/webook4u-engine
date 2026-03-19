@@ -2,7 +2,7 @@
 
 module Bookings
   module Input
-    def self.safe_date(date_param, today: Date.current, max_future_days: BookingRules.max_future_days)
+    def self.safe_date(date_param, today: BookingRules.business_today, max_future_days: BookingRules.max_future_days)
       return nil if date_param.blank?
 
       parsed_date = Date.iso8601(date_param)

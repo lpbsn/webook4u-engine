@@ -25,6 +25,20 @@ class Bookings::InputTest < ActiveSupport::TestCase
     end
   end
 
+  # UTC 23:01 = Paris 00:01 on Mar 16: server UTC date is still Mar 15
+  # but business_today is already Mar 16 — Mar 15 must be rejected.
+  test "safe_date rejects the Paris-previous-day when UTC server date still shows that day" do
+    travel_to Time.utc(2026, 3, 15, 23, 1, 0) do
+      assert_nil Bookings::Input.safe_date("2026-03-15")
+    end
+  end
+
+  test "safe_date accepts the Paris-today even when UTC date is still the previous day" do
+    travel_to Time.utc(2026, 3, 15, 23, 1, 0) do
+      assert_equal Date.new(2026, 3, 16), Bookings::Input.safe_date("2026-03-16")
+    end
+  end
+
   test "safe_date returns nil for date beyond max_future_days" do
     travel_to Time.zone.local(2026, 3, 15, 12, 0, 0) do
       # Within 30 days: accept

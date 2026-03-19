@@ -10,7 +10,13 @@ module BookingRules
   MAX_FUTURE_DAYS = 30
   PENDING_EXPIRATION_MINUTES = 5
 
+  BUSINESS_TIMEZONE = "Europe/Paris"
+
   class << self
+    def business_today
+      Time.now.in_time_zone(BUSINESS_TIMEZONE).to_date
+    end
+
     def slot_duration
       SLOT_DURATION_MINUTES.minutes
     end

@@ -6,6 +6,25 @@ require "test_helper"
 class BookingRulesTest < ActiveSupport::TestCase
   include ActiveSupport::Testing::TimeHelpers
 
+  # --- business_today (Europe/Paris) ---
+  # Paris is UTC+1 in March 2026 (before DST on Mar 29).
+  # These two tests anchor to the same UTC date (Mar 15) but on opposite
+  # sides of the Paris midnight boundary to prove server TZ is irrelevant.
+
+  test "business_today returns Paris date just before midnight even when UTC date is the same" do
+    # UTC 22:59 → Paris 23:59 → still Mar 15 in Paris
+    travel_to Time.utc(2026, 3, 15, 22, 59, 0) do
+      assert_equal Date.new(2026, 3, 15), BookingRules.business_today
+    end
+  end
+
+  test "business_today returns next Paris date just after midnight despite UTC still being previous day" do
+    # UTC 23:01 → Paris 00:01 → already Mar 16 in Paris
+    travel_to Time.utc(2026, 3, 15, 23, 1, 0) do
+      assert_equal Date.new(2026, 3, 16), BookingRules.business_today
+    end
+  end
+
   # --- Constants / API ---
 
   test "slot_duration returns 30 minutes" do

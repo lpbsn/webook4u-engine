@@ -26,12 +26,12 @@ class Bookings::CreatePendingTest < ActiveSupport::TestCase
         booking_start_time: slot
       ).call
 
-      assert result.success?
+      assert result.success?, "CreatePending should succeed for valid slot; got error_code=#{result.error_code.inspect}"
       assert_not_nil result.booking
       assert_nil result.error_message
 
       booking = result.booking
-      assert_equal "pending", booking.booking_status
+      assert_equal "pending", booking.booking_status, "Booking should be pending after CreatePending success"
       assert_equal slot, booking.booking_start_time
       assert_equal slot + 30.minutes, booking.booking_end_time
       assert_not_nil booking.booking_expires_at
@@ -45,7 +45,7 @@ class Bookings::CreatePendingTest < ActiveSupport::TestCase
       booking_start_time: nil
     ).call
 
-    assert_not result.success?
+    assert_not result.success?, "CreatePending should fail when slot is nil"
     assert_nil result.booking
     assert_equal Bookings::Errors::INVALID_SLOT, result.error_code
     assert_equal "Le créneau sélectionné est invalide.", result.error_message

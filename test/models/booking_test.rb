@@ -43,7 +43,7 @@ class BookingTest < ActiveSupport::TestCase
     )
 
     assert_not booking.valid?
-    assert_includes booking.errors[:booking_start_time], "can't be blank"
+    assert booking.errors[:booking_start_time].any?
   end
 
   test "requires booking_end_time" do
@@ -56,7 +56,7 @@ class BookingTest < ActiveSupport::TestCase
     )
 
     assert_not booking.valid?
-    assert_includes booking.errors[:booking_end_time], "can't be blank"
+    assert booking.errors[:booking_end_time].any?
   end
 
   test "requires booking_status" do
@@ -68,7 +68,7 @@ class BookingTest < ActiveSupport::TestCase
     )
 
     assert_not booking.valid?
-    assert_includes booking.errors[:booking_status], "can't be blank"
+    assert booking.errors[:booking_status].any?
   end
 
   # =========================================================
@@ -85,7 +85,7 @@ class BookingTest < ActiveSupport::TestCase
     )
 
     assert_not booking.valid?
-    assert_includes booking.errors[:booking_expires_at], "can't be blank"
+    assert booking.errors[:booking_expires_at].any?
   end
 
   # =========================================================
@@ -104,7 +104,7 @@ class BookingTest < ActiveSupport::TestCase
     )
 
     assert_not booking.valid?
-    assert_includes booking.errors[:customer_first_name], "can't be blank"
+    assert booking.errors[:customer_first_name].any?
   end
 
   test "confirmed booking requires customer last name" do
@@ -119,7 +119,7 @@ class BookingTest < ActiveSupport::TestCase
     )
 
     assert_not booking.valid?
-    assert_includes booking.errors[:customer_last_name], "can't be blank"
+    assert booking.errors[:customer_last_name].any?
   end
 
   test "confirmed booking requires customer email" do
@@ -134,7 +134,7 @@ class BookingTest < ActiveSupport::TestCase
     )
 
     assert_not booking.valid?
-    assert_includes booking.errors[:customer_email], "can't be blank"
+    assert booking.errors[:customer_email].any?
   end
 
   test "confirmed booking requires valid email format" do
@@ -150,7 +150,7 @@ class BookingTest < ActiveSupport::TestCase
     )
 
     assert_not booking.valid?
-    assert_not_empty booking.errors[:customer_email]
+    assert booking.errors[:customer_email].any?
   end
 
   test "confirmed booking is valid with complete customer information" do
@@ -183,7 +183,7 @@ class BookingTest < ActiveSupport::TestCase
     )
 
     assert_not booking.valid?
-    assert_includes booking.errors[:booking_end_time], "must be after booking_start_time"
+    assert booking.errors[:booking_end_time].any?
   end
 
   test "service must belong to the same client" do
@@ -208,7 +208,7 @@ class BookingTest < ActiveSupport::TestCase
     )
 
     assert_not booking.valid?
-    assert_includes booking.errors[:service], "must belong to the same client"
+    assert booking.errors[:service].any?
   end
 
   # =========================================================

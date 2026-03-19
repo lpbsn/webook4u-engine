@@ -3,12 +3,14 @@ require "test_helper"
 class PublicClientsControllerTest < ActionDispatch::IntegrationTest
   include ActiveSupport::Testing::TimeHelpers
 
-  test "should get show" do
+  test "GET show returns success for valid client slug" do
     client = Client.create!(name: "Salon", slug: "salon")
     get public_client_url(client.slug)
     assert_response :success
   end
 
+  # When date is beyond max_future_days, safe_date is nil so the slots step is not rendered;
+  # we assert no start_time input (slot choice) instead of recap copy ("Date :", "—") so the test is stable if labels change.
   test "rejects date beyond max_future_days and does not show slots" do
     client = Client.create!(name: "Salon", slug: "salon")
     service = client.services.create!(name: "Coupe", duration_minutes: 30, price_cents: 2500)
@@ -17,9 +19,7 @@ class PublicClientsControllerTest < ActionDispatch::IntegrationTest
       date_beyond = (Date.current + (BookingRules.max_future_days + 1).days).iso8601
       get public_client_url(client.slug), params: { service_id: service.id, date: date_beyond }
       assert_response :success
-      # Date should be rejected (Bookings::Input.safe_date returns nil), so recap shows "—" for date
-      assert_includes response.body, "Date :"
-      assert_includes response.body, "—"
+      assert_select 'input[name="start_time"]', count: 0
     end
   end
 end

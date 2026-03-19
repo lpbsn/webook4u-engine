@@ -42,7 +42,7 @@ class BookingFlowTest < ActionDispatch::IntegrationTest
       booking = Booking.last
       assert_equal @client.id, booking.client_id
       assert_equal @service.id, booking.service_id
-      assert_equal "pending", booking.booking_status
+      assert_equal "pending", booking.booking_status, "After GET new, booking should be pending"
       assert_equal slot, booking.booking_start_time
 
       # 5. Soumission valide via POST confirm
@@ -62,7 +62,7 @@ class BookingFlowTest < ActionDispatch::IntegrationTest
       assert_response :success
 
       # 7. Vérification finale : booking confirmé en base
-      assert_equal "confirmed", booking.booking_status
+      assert_equal "confirmed", booking.booking_status, "After confirm POST, booking should be confirmed"
       assert_equal "Léonard", booking.customer_first_name
       assert_equal "leo@example.com", booking.customer_email
 

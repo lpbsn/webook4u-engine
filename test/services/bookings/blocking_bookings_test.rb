@@ -76,11 +76,10 @@ class Bookings::BlockingBookingsTest < ActiveSupport::TestCase
         range_end: day_end
       )
 
-      assert_includes intervals, [inside.booking_start_time, inside.booking_end_time]
-      assert_includes intervals, [cross.booking_start_time, cross.booking_end_time]
+      assert_includes intervals, [ inside.booking_start_time, inside.booking_end_time ]
+      assert_includes intervals, [ cross.booking_start_time, cross.booking_end_time ]
       # Just ensure only two intervals are returned in this scenario
       assert_equal 2, intervals.size
     end
   end
 end
-

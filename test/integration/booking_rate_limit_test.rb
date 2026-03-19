@@ -87,4 +87,3 @@ class BookingRateLimitTest < ActionDispatch::IntegrationTest
     ENV["BOOKINGS_RATE_LIMIT_PERIOD_SECONDS"] = old_period
   end
 end
-

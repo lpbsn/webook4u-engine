@@ -72,4 +72,3 @@ module Bookings
     private_class_method :allow?, :cache_key, :increment_with_ttl, :env_int
   end
 end
-

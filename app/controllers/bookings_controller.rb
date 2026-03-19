@@ -80,7 +80,7 @@ class BookingsController < ApplicationController
       date: booking_start_time&.to_date
     ),
                 alert: Bookings::RateLimit::MESSAGE
-    return
+    nil
   end
 
   def enforce_rate_limit_for_confirmation
@@ -89,7 +89,7 @@ class BookingsController < ApplicationController
     return if Bookings::RateLimit.allow_confirmation?(ip: request.remote_ip, client_slug: client.slug)
 
     render plain: Bookings::RateLimit::MESSAGE, status: :too_many_requests
-    return
+    nil
   end
 
   def booking_params

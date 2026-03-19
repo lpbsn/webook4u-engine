@@ -37,4 +37,3 @@ class BookingsRateLimitTest < ActiveSupport::TestCase
     ENV["BOOKINGS_RATE_LIMIT_PERIOD_SECONDS"] = old_period
   end
 end
-

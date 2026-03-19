@@ -40,6 +40,60 @@
 
 ---
 
+## Protection anti-spam (MVP)
+
+### Description
+
+- Le système inclut une **protection anti-spam minimale** afin de limiter les abus simples (scripts basiques, enchaînement de requêtes, répétitions).
+- Il s’agit d’un **garde-fou technique transversal** (rate limiting) appliqué au niveau des points d’entrée HTTP du flux de réservation.
+
+### Périmètre
+
+- **Actions concernées** :
+  - **Création pending** : `BookingsController#new` (GET) — route qui déclenche la création d’un booking `pending`.
+  - **Confirmation** : `BookingsController#create` (POST) — route qui confirme un booking `pending`.
+- **Actions non concernées** :
+  - La **page publique** (`PublicClientsController#show`) n’est pas soumise à ce mécanisme.
+  - La **page success** (`BookingsController#success`) n’est pas soumise à ce mécanisme.
+
+### Comportement
+
+#### Cas GET `BookingsController#new` (création pending)
+
+- **En cas de dépassement** :
+  - ne **pas** créer de booking `pending`,
+  - ne **pas** appeler `Bookings::CreatePending`,
+  - conserver un **rendu HTML cohérent** (ex. redirection vers la page publique),
+  - afficher un **message dédié** (distinct des erreurs métier comme “créneau indisponible”).
+
+#### Cas POST `BookingsController#create` (confirmation)
+
+- **En cas de dépassement** :
+  - ne **pas** appeler `Bookings::Confirm`,
+  - ne **pas** confirmer le booking (il reste `pending`),
+  - retourner une **réponse HTTP 429**,
+  - afficher un **message dédié** (distinct des erreurs métier).
+
+#### Cas nominal
+
+- Aucun impact sur le parcours utilisateur normal (consultation → sélection → pending → confirmation → success).
+
+### Nature du mécanisme
+
+- Basé sur du **rate limiting par IP**.
+- **Seuils configurables** (valeurs ajustables selon contexte).
+- Objectif : **réduire les abus simples** sans introduire d’authentification ni de CAPTCHA.
+
+### Positionnement métier
+
+- Ce mécanisme **n’est pas une règle métier** de réservation.
+- Il ne modifie pas :
+  - les règles de **disponibilité** (génération des slots, overlaps, pending actif),
+  - les règles de **confirmation** (pending, expiration, validations, unicité).
+- Il agit uniquement comme un **garde-fou technique** sur la fréquence d’appels aux points d’entrée.
+
+---
+
 ## 3. Règles métier explicites
 
 ### 3.1 Création d’un booking pending
@@ -206,8 +260,11 @@
   - Les champs Stripe (`stripe_session_id`, `stripe_payment_intent`) sont présents en base mais **non utilisés** dans les règles de confirmation actuelles. Ils sont **réservés** à une future intégration paiement (ex: session checkout, payment intent) et ne doivent pas être interprétés comme une précondition MVP.
 
 - **Anti-spam**  
-  - Aucune protection anti-spam spécifique n’est implémentée dans le MVP (rate limit, captcha, quotas par IP/email, etc.).  
-  - C’est une **limite connue**: le système suppose un trafic “raisonnable” et s’appuie surtout sur les règles de disponibilité + le lock DB pour la concurrence.
+  - Une **protection anti-spam minimale** est en place sous forme de **rate limiting par IP**, appliqué uniquement sur :
+    - la **création pending** (`BookingsController#new`),
+    - la **confirmation** (`BookingsController#create`).
+  - Cette protection est volontairement **simple** (MVP) : elle vise les abus automatisés basiques et les répétitions, et **ne protège pas** contre des attaques avancées (changement d’IP, botnets, etc.).
+  - Elle ne remplace pas les garde-fous métier existants (disponibilité, expiration pending, locks / unicité DB) et n’en modifie pas la logique.
 
 - **Gestion des slots (“un seul hold par slot exact”)**  
   - **Lock technique**: la sérialisation repose sur `SlotLock` avec la clé `(client_id, booking_start_time)` (slot “exact” au sens *start_time*).  

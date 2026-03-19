@@ -4,4 +4,3 @@ class AddConfirmationTokenToBookings < ActiveRecord::Migration[8.1]
     add_index :bookings, :confirmation_token, unique: true
   end
 end
-

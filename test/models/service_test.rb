@@ -1,0 +1,54 @@
+# frozen_string_literal: true
+
+require "test_helper"
+
+class ServiceTest < ActiveSupport::TestCase
+  setup do
+    @client = Client.create!(name: "Salon Test", slug: "salon-test-svc")
+  end
+
+  test "valid service saves without errors" do
+    service = Service.new(client: @client, name: "Coupe", duration_minutes: 30, price_cents: 2500)
+    assert service.valid?
+  end
+
+  test "name is required" do
+    service = Service.new(client: @client, name: nil, duration_minutes: 30, price_cents: 2500)
+    assert_not service.valid?
+    assert_includes service.errors[:name], "can't be blank"
+  end
+
+  test "duration_minutes is required" do
+    service = Service.new(client: @client, name: "Coupe", duration_minutes: nil, price_cents: 2500)
+    assert_not service.valid?
+    assert_includes service.errors[:duration_minutes], "can't be blank"
+  end
+
+  test "price_cents is required" do
+    service = Service.new(client: @client, name: "Coupe", duration_minutes: 30, price_cents: nil)
+    assert_not service.valid?
+    assert_includes service.errors[:price_cents], "can't be blank"
+  end
+
+  test "service must belong to a client" do
+    service = Service.new(client: nil, name: "Coupe", duration_minutes: 30, price_cents: 2500)
+    assert_not service.valid?
+  end
+
+  test "destroying service destroys associated bookings" do
+    service = @client.services.create!(name: "Coupe homme", duration_minutes: 30, price_cents: 2500)
+    @client.bookings.create!(
+      service: service,
+      booking_start_time: 2.days.from_now.change(hour: 11, min: 0, sec: 0),
+      booking_end_time: 2.days.from_now.change(hour: 11, min: 30, sec: 0),
+      booking_status: :confirmed,
+      customer_first_name: "Marie",
+      customer_last_name: "Martin",
+      customer_email: "marie@example.com"
+    )
+
+    assert_difference "Booking.count", -1 do
+      service.destroy
+    end
+  end
+end

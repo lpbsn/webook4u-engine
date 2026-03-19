@@ -9,8 +9,13 @@ class PublicClientsControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
   end
 
-  # When date is beyond max_future_days, safe_date is nil so the slots step is not rendered;
-  # we assert no start_time input (slot choice) instead of recap copy ("Date :", "—") so the test is stable if labels change.
+  # We assert no start_time input (slot choice) instead of recap copy ("Date :", "—") so the test is stable if labels change.
+  test "GET show returns 404 for unknown client slug" do
+    get public_client_url("slug-inexistant-xyz")
+    assert_response :not_found
+  end
+
+  # When date is beyond max_future_days, safe_date is nil so the slots step is not rendered.
   test "rejects date beyond max_future_days and does not show slots" do
     client = Client.create!(name: "Salon", slug: "salon")
     service = client.services.create!(name: "Coupe", duration_minutes: 30, price_cents: 2500)

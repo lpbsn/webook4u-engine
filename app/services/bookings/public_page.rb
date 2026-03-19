@@ -21,9 +21,7 @@ module Bookings
       client = Client.find_by!(slug: slug)
       services = client.services
 
-      selected_service = if service_id.present?
-        client.services.find(service_id)
-      end
+      selected_service = client.services.find(service_id) if service_id.present?
 
       date = Input.safe_date(date_param)
 

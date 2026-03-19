@@ -1,0 +1,57 @@
+# frozen_string_literal: true
+
+require "test_helper"
+
+class ClientTest < ActiveSupport::TestCase
+  test "valid client saves without errors" do
+    client = Client.new(name: "Salon A", slug: "salon-a")
+    assert client.valid?
+  end
+
+  test "name is required" do
+    client = Client.new(name: nil, slug: "salon-b")
+    assert_not client.valid?
+    assert_includes client.errors[:name], "can't be blank"
+  end
+
+  test "slug is required" do
+    client = Client.new(name: "Salon C", slug: nil)
+    assert_not client.valid?
+    assert_includes client.errors[:slug], "can't be blank"
+  end
+
+  test "slug must be unique" do
+    Client.create!(name: "Salon D", slug: "slug-dupe")
+
+    duplicate = Client.new(name: "Autre", slug: "slug-dupe")
+    assert_not duplicate.valid?
+    assert_includes duplicate.errors[:slug], "has already been taken"
+  end
+
+  test "destroying client destroys associated services" do
+    client = Client.create!(name: "Salon E", slug: "salon-e")
+    client.services.create!(name: "Coupe", duration_minutes: 30, price_cents: 1500)
+
+    assert_difference "Service.count", -1 do
+      client.destroy
+    end
+  end
+
+  test "destroying client destroys associated bookings" do
+    client = Client.create!(name: "Salon F", slug: "salon-f")
+    service = client.services.create!(name: "Coupe", duration_minutes: 30, price_cents: 1500)
+    client.bookings.create!(
+      service: service,
+      booking_start_time: 2.days.from_now.change(hour: 10, min: 0, sec: 0),
+      booking_end_time: 2.days.from_now.change(hour: 10, min: 30, sec: 0),
+      booking_status: :confirmed,
+      customer_first_name: "Jean",
+      customer_last_name: "Dupont",
+      customer_email: "jean@example.com"
+    )
+
+    assert_difference "Booking.count", -1 do
+      client.destroy
+    end
+  end
+end

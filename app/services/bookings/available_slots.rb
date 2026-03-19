@@ -56,8 +56,5 @@ module Bookings
       end
     end
 
-    def day_range
-      date.in_time_zone.all_day
-    end
   end
 end

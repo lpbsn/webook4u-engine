@@ -230,6 +230,49 @@ class BookingsControllerTest < ActionDispatch::IntegrationTest
     end
   end
 
+  test "GET #new returns 404 for unknown client slug" do
+    travel_to Time.zone.local(2026, 3, 15, 8, 0, 0) do
+      slot = Time.zone.local(2026, 3, 16, 10, 0, 0)
+      get new_service_booking_path("slug-inconnu-xyz", @service, start_time: slot)
+      assert_response :not_found
+    end
+  end
+
+  test "POST #create returns 404 for unknown client slug" do
+    travel_to Time.zone.local(2026, 3, 15, 8, 0, 0) do
+      booking = @client.bookings.create!(
+        service: @service,
+        booking_start_time: Time.zone.local(2026, 3, 16, 11, 0, 0),
+        booking_end_time: Time.zone.local(2026, 3, 16, 11, 30, 0),
+        booking_status: :pending,
+        booking_expires_at: BookingRules.pending_expires_at
+      )
+
+      post confirm_booking_path("slug-inconnu-xyz", booking), params: {
+        booking: { customer_first_name: "A", customer_last_name: "B", customer_email: "a@b.com" }
+      }
+      assert_response :not_found
+    end
+  end
+
+  test "POST #create returns 404 for booking not belonging to client" do
+    travel_to Time.zone.local(2026, 3, 15, 8, 0, 0) do
+      other_client = Client.create!(name: "Autre", slug: "autre-404")
+      booking = @client.bookings.create!(
+        service: @service,
+        booking_start_time: Time.zone.local(2026, 3, 16, 11, 0, 0),
+        booking_end_time: Time.zone.local(2026, 3, 16, 11, 30, 0),
+        booking_status: :pending,
+        booking_expires_at: BookingRules.pending_expires_at
+      )
+
+      post confirm_booking_path(other_client.slug, booking), params: {
+        booking: { customer_first_name: "A", customer_last_name: "B", customer_email: "a@b.com" }
+      }
+      assert_response :not_found
+    end
+  end
+
   # =========================================================
   # GET #success
   # =========================================================
@@ -251,6 +294,11 @@ class BookingsControllerTest < ActionDispatch::IntegrationTest
 
       assert_response :success
     end
+  end
+
+  test "GET #success returns 404 for unknown confirmation token" do
+    get booking_success_path(@client.slug, "token-qui-nexiste-pas")
+    assert_response :not_found
   end
 
   test "GET #success returns 404 when booking does not belong to client" do

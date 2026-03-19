@@ -43,7 +43,7 @@ class BookingsController < ApplicationController
     if result.success?
       redirect_to booking_success_path(@client.slug, @booking.confirmation_token)
     else
-      if @booking.errors.any?
+      if result.error_code == Bookings::Errors::FORM_INVALID
         @booking_start_time = @booking.booking_start_time
         @booking_end_time = @booking.booking_end_time
         flash.now[:alert] = result.error_message

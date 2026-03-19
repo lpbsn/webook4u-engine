@@ -1,0 +1,18 @@
+---
+alwaysApply: true
+---
+
+Projet Ruby on Rails MVP.
+- privilégier small changes > big changes
+- ne jamais réécrire un fichier entier sans demande explicite
+- expliquer avant de modifier si le comportement métier est ambigu
+- ne pas changer le comportement sans le signaler clairement
+- conserver les conventions Rails existantes
+- éviter les abstractions prématurées
+- pour ERB : limiter les changements HTML inutiles
+- pour les tests : prioriser les scénarios métier critiques
+- toujours proposer une validation rapide après modification
+- Respectes cursor playbook dans /docs/cursor-playbook.md
+- 1 chat = 1 role
+- small changes only
+- always review with SEC before validation

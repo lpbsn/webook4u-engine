@@ -4,20 +4,24 @@ class PublicClientsController < ApplicationController
   # PAGE PRINCIPALE DE RÉSERVATION
   #
   # Cette page permet de :
-  # 1️⃣ choisir une prestation
-  # 2️⃣ choisir une date
-  # 3️⃣ afficher les créneaux disponibles
+  # 1️⃣ choisir une enseigne
+  # 2️⃣ choisir une prestation
+  # 3️⃣ choisir une date
+  # 4️⃣ afficher les créneaux disponibles
   #
   # Tout se passe sur UNE SEULE PAGE.
   # =========================================================
   def show
     page = Bookings::PublicPage.new(
       slug: params[:slug],
+      enseigne_id: params[:enseigne_id],
       service_id: params[:service_id],
       date_param: params[:date]
     ).call
 
     @client = page.client
+    @enseignes = page.enseignes
+    @selected_enseigne = page.selected_enseigne
     @services = page.services
     @selected_service = page.selected_service
     @date = page.date

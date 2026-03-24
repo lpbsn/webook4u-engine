@@ -4,8 +4,6 @@
 
 module BookingRules
   SLOT_DURATION_MINUTES = 30
-  DAY_START_HOUR = 9
-  DAY_END_HOUR = 18
   MIN_NOTICE_MINUTES = 30
   MAX_FUTURE_DAYS = 30
   PENDING_EXPIRATION_MINUTES = 5
@@ -19,19 +17,6 @@ module BookingRules
 
     def slot_duration
       SLOT_DURATION_MINUTES.minutes
-    end
-
-    def day_start_hour
-      DAY_START_HOUR
-    end
-
-    def day_end_hour
-      DAY_END_HOUR
-    end
-
-    def bookable_day?(date)
-      d = date.respond_to?(:to_date) ? date.to_date : date
-      d.monday? || d.tuesday? || d.wednesday? || d.thursday? || d.friday?
     end
 
     def min_notice_minutes

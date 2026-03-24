@@ -1,7 +1,7 @@
 ## 1. Résumé exécutif
 
 - **Rôle de `BookingRules`**: `BookingRules` centralise des **constantes** et **prédicats simples** qui définissent le cadre du réservable (pas de 30 min, horaires 9–18, jours ouvrés, min notice 30 min, horizon 30 jours, expiration pending 5 min) et la règle “expired”. Implémenté dans `app/services/booking_rules.rb` et consommé par `Bookings::AvailableSlots`, `Bookings::Input`, `Bookings::CreatePending` et le modèle `Booking` (voir en-tête de `booking_rules.rb`).
-- **Synthèse du fonctionnement**: le moteur expose une page publique qui calcule des slots théoriques (`Bookings::PublicPage` → `Bookings::AvailableSlots`). Quand l’utilisateur ouvre un slot, le système crée un **booking `pending`** qui **bloque temporairement** le créneau (via scope `active_pending`). La confirmation transforme ce pending en **`confirmed`** si la session n’a pas expiré et si le slot n’est toujours pas bloqué. La concurrence est gérée par un **verrou transactionnel PG advisory lock** + une **contrainte DB d’unicité** sur les bookings `confirmed`.
+- **Synthèse du fonctionnement**: le moteur expose une page publique qui calcule des slots théoriques (`Bookings::PublicPage` → `Bookings::AvailableSlots`). Quand l’utilisateur ouvre un slot, le système crée un **booking `pending`** qui **bloque temporairement** le créneau (via scope `active_pending`). La confirmation transforme ce pending en **`confirmed`** si la session n’a pas expiré et si le slot n’est toujours pas bloqué. La concurrence est gérée par un **verrou transactionnel PG advisory lock** + une **contrainte DB d’unicité** sur les bookings `confirmed` d’une même `enseigne`.
 
 ---
 
@@ -18,7 +18,7 @@
   - **Règle**: génère une grille de créneaux (pas 30 min) dans les horaires d’ouverture et filtre min notice + conflits (confirmed + pending actif).
 
 - **Création pending (réservation temporaire)**  
-  - **HTTP**: `BookingsController#new` (`app/controllers/bookings_controller.rb`)  
+  - **HTTP**: `BookingsController#create_pending` (`app/controllers/bookings_controller.rb`)  
   - **Sanitization**: `Bookings::Input.safe_time(params[:start_time])` (`app/services/bookings/input.rb`)  
   - **Service**: `Bookings::CreatePending#call` (`app/services/bookings/create_pending.rb`)  
   - **Effet**: si OK, crée un `Booking` `pending` avec `booking_expires_at` à now + 5 minutes.
@@ -30,67 +30,13 @@
 
 - **Success**  
   - **HTTP**: `BookingsController#success` récupère le booking via `confirmation_token` scoppé au client (`app/controllers/bookings_controller.rb`).  
-  - **Test de référence**: `test/integration/booking_flow_test.rb` décrit explicitement le flux complet “public → new (pending) → confirm → success”.
+  - **Test de référence**: `test/integration/booking_flow_test.rb` décrit explicitement le flux complet “public → create_pending (POST) → confirm → success”.
 
 ### Acteurs et objets principaux
 
-- **Client**: propriétaire du catalogue et du calendrier (scope de concurrence et d’unicité).  
+- **Client**: propriétaire du catalogue de `Service` et des `Enseigne`. Le tunnel public est adressé par `slug`, mais la disponibilité, la concurrence et l’unicité des créneaux sont scoppées par `enseigne`.  
 - **Service**: définit la **durée** (et le prix), utilisée pour calculer `booking_end_time` et les overlaps (`db/schema.rb`, table `services`).  
 - **Booking**: agrégat de réservation avec `booking_status`, temps (start/end/expires), infos client, token de confirmation (`app/models/booking.rb`, `db/schema.rb`).
-
----
-
-## Protection anti-spam (MVP)
-
-### Description
-
-- Le système inclut une **protection anti-spam minimale** afin de limiter les abus simples (scripts basiques, enchaînement de requêtes, répétitions).
-- Il s’agit d’un **garde-fou technique transversal** (rate limiting) appliqué au niveau des points d’entrée HTTP du flux de réservation.
-
-### Périmètre
-
-- **Actions concernées** :
-  - **Création pending** : `BookingsController#new` (GET) — route qui déclenche la création d’un booking `pending`.
-  - **Confirmation** : `BookingsController#create` (POST) — route qui confirme un booking `pending`.
-- **Actions non concernées** :
-  - La **page publique** (`PublicClientsController#show`) n’est pas soumise à ce mécanisme.
-  - La **page success** (`BookingsController#success`) n’est pas soumise à ce mécanisme.
-
-### Comportement
-
-#### Cas GET `BookingsController#new` (création pending)
-
-- **En cas de dépassement** :
-  - ne **pas** créer de booking `pending`,
-  - ne **pas** appeler `Bookings::CreatePending`,
-  - conserver un **rendu HTML cohérent** (ex. redirection vers la page publique),
-  - afficher un **message dédié** (distinct des erreurs métier comme “créneau indisponible”).
-
-#### Cas POST `BookingsController#create` (confirmation)
-
-- **En cas de dépassement** :
-  - ne **pas** appeler `Bookings::Confirm`,
-  - ne **pas** confirmer le booking (il reste `pending`),
-  - retourner une **réponse HTTP 429**,
-  - afficher un **message dédié** (distinct des erreurs métier).
-
-#### Cas nominal
-
-- Aucun impact sur le parcours utilisateur normal (consultation → sélection → pending → confirmation → success).
-
-### Nature du mécanisme
-
-- Basé sur du **rate limiting par IP**.
-- **Seuils configurables** (valeurs ajustables selon contexte).
-- Objectif : **réduire les abus simples** sans introduire d’authentification ni de CAPTCHA.
-
-### Positionnement métier
-
-- Ce mécanisme **n’est pas une règle métier** de réservation.
-- Il ne modifie pas :
-  - les règles de **disponibilité** (génération des slots, overlaps, pending actif),
-  - les règles de **confirmation** (pending, expiration, validations, unicité).
-- Il agit uniquement comme un **garde-fou technique** sur la fréquence d’appels aux points d’entrée.
 
 ---
 
@@ -117,8 +63,8 @@
   - **Effet**: le pending a une “session” de 5 minutes (validité temporelle).
 
 - **Règle de concurrence (création pending)**  
-  - **Où**: bloc `SlotLock.with_lock(client_id:, booking_start_time:)` (`app/services/bookings/create_pending.rb`)  
-  - **Effet**: sérialise les créations/confirmations concurrentes sur la même clé (client + start_time), via `pg_advisory_xact_lock` transactionnel (`app/services/bookings/slot_lock.rb`).
+  - **Où**: bloc `SlotLock.with_lock(enseigne_id:, booking_start_time:)` (`app/services/bookings/create_pending.rb`)  
+  - **Effet**: sérialise les créations/confirmations concurrentes sur la même clé (`enseigne` + `start_time` exact), via `pg_advisory_xact_lock` transactionnel (`app/services/bookings/slot_lock.rb`).
 
 ### 3.2 Confirmation d’un booking
 
@@ -143,15 +89,15 @@
   - **Où**: `confirmation_token: SecureRandom.uuid` (`app/services/bookings/confirm.rb`) + index unique `confirmation_token` (`db/migrate/20260318091500_add_confirmation_token_to_bookings.rb`, visible dans `db/schema.rb`)  
   - **Effet**: permet la page success (`BookingsController#success` récupère par token).
 
-- **Garde-fou DB: un seul `confirmed` par (client, start_time)**  
-  - **Où**: index unique partiel `where booking_status='confirmed'` (`db/migrate/20260316073931_add_unique_confirmed_slot_index_to_bookings.rb`, visible dans `db/schema.rb`)  
+- **Garde-fou DB: un seul `confirmed` par (`enseigne`, `booking_start_time`)**  
+  - **Où**: index unique partiel `where booking_status='confirmed'` sur `[:enseigne_id, :booking_start_time]` (`db/migrate/20260325073349_replace_confirmed_booking_uniqueness_scope.rb`, visible dans `db/schema.rb`)  
   - **Effet**: si course malgré checks, la DB lève `RecordNotUnique`; `Confirm` retourne `SLOT_TAKEN_DURING_CONFIRM` (`app/services/bookings/confirm.rb`, `app/services/bookings/errors.rb`). Test: `test/services/bookings/booking_duplicates_flow_test.rb`.
 
 ### 3.3 Disponibilité / blocage de slot
 
 - **Règle: disponibilité = grille générée − créneaux en overlap avec “bloquants”**  
   - **Où**: `Bookings::AvailableSlots#call` génère des slots et retire ceux dont l’intervalle overlap un intervalle bloquant (`app/services/bookings/available_slots.rb`)  
-  - **“Bloquant”**: `BlockingBookings.overlapping` s’appuie sur `client.bookings.blocking_slot` et un overlap SQL (`booking_start_time < end AND booking_end_time > start`) (`app/services/bookings/blocking_bookings.rb`, `app/models/booking.rb`)  
+  - **“Bloquant”**: `BlockingBookings.overlapping` s’appuie sur les bookings de l’`enseigne` quand elle est fournie (cas nominal du tunnel public), avec fallback sur `client.bookings` si aucun contexte `enseigne` n’est donné, puis applique un overlap SQL (`booking_start_time < end AND booking_end_time > start`) (`app/services/bookings/blocking_bookings.rb`, `app/models/booking.rb`)  
   - **Effet concret**: confirmed bloque, pending actif bloque, pending expiré ne bloque plus. Tests: `test/services/bookings/available_slots_test.rb` + `create_pending_test.rb`.
 
 - **Règle d’overlap (semi-ouverte)**  
@@ -224,7 +170,7 @@
 - Confirmer un booking **non pending** (`NOT_PENDING`) (`app/services/bookings/confirm.rb`).  
 - Confirmer un pending **expiré** (`SESSION_EXPIRED`).  
 - Confirmer si un overlap existe au moment de confirmer (`SLOT_UNAVAILABLE`).  
-- Avoir **deux confirmed** sur le même `(client_id, booking_start_time)` (interdit DB) (`db/migrate/20260316073931...`).
+- Avoir **deux confirmed** sur la même paire `(`enseigne_id`, `booking_start_time`)` (interdit DB) (`db/migrate/20260325073349_replace_confirmed_booking_uniqueness_scope.rb`).
 
 ---
 
@@ -235,8 +181,8 @@
 - **Hypothèse: calendrier simple, pas de gestion d’horaires variables**  
   - Horaires d’ouverture fixes 9–18 et jours ouvrés lundi–vendredi (`BookingRules`, `AvailableSlots`). Pas de fermeture exceptionnelle, vacances, jours fériés, pauses, capacité multiple.
 
-- **Hypothèse: pas de “ressource” (employé/salle) → capacité = 1 par client**  
-  - L’unicité/concurrence est scoppée au `client_id` (lock et index unique partiel). Le “calendrier” est celui du client, pas d’une ressource interne.
+- **Hypothèse: pas de “ressource” (employé/salle) → capacité = 1 par enseigne sur un intervalle donné**  
+  - L’unicité/concurrence est scoppée à l’`enseigne` (lock technique + index unique partiel sur les `confirmed`). Le système ne modélise pas de sous-ressource interne dans une `enseigne`.
 
 - **Hypothèse: un slot valable doit provenir de la grille**  
   - Refus explicite des timestamps hors slots générés (`Availability.valid_generated_slot?`). Cela simplifie la QA (on teste une grille), mais limite la flexibilité (ex: début à :15 impossible sauf si généré).
@@ -259,15 +205,8 @@
   - Le statut `failed` existe dans l’enum `Booking`, mais aucun flux applicatif observé ne l’utilise/assigne dans le MVP.  
   - Les champs Stripe (`stripe_session_id`, `stripe_payment_intent`) sont présents en base mais **non utilisés** dans les règles de confirmation actuelles. Ils sont **réservés** à une future intégration paiement (ex: session checkout, payment intent) et ne doivent pas être interprétés comme une précondition MVP.
 
-- **Anti-spam**  
-  - Une **protection anti-spam minimale** est en place sous forme de **rate limiting par IP**, appliqué uniquement sur :
-    - la **création pending** (`BookingsController#new`),
-    - la **confirmation** (`BookingsController#create`).
-  - Cette protection est volontairement **simple** (MVP) : elle vise les abus automatisés basiques et les répétitions, et **ne protège pas** contre des attaques avancées (changement d’IP, botnets, etc.).
-  - Elle ne remplace pas les garde-fous métier existants (disponibilité, expiration pending, locks / unicité DB) et n’en modifie pas la logique.
-
 - **Gestion des slots (“un seul hold par slot exact”)**  
-  - **Lock technique**: la sérialisation repose sur `SlotLock` avec la clé `(client_id, booking_start_time)` (slot “exact” au sens *start_time*).  
+  - **Lock technique**: la sérialisation repose sur `SlotLock` avec la clé `(enseigne_id, booking_start_time)` (slot “exact” au sens *start_time*).  
   - **Logique métier réelle**: la disponibilité et les refus ne sont pas basés sur l’égalité de `start_time` mais sur les **overlaps d’intervalles** \([start,end)\) calculés via la durée de service (confirmed + pending actif bloquent par overlap).  
   - En conséquence, “un seul hold par slot exact” décrit la **portée du verrou** (clé de lock), pas la règle de blocage globale, qui est **intervalle-based**.
 
@@ -287,8 +226,8 @@
   - Pas de “maximum bookings par jour”, pas de politique anti-spam, pas de “customer déjà existant”, pas de consentement/validation additionnelle.
 
 - **Portée exacte du lock `SlotLock`**  
-  - Clé = `(client_id, booking_start_time.to_i)` (`app/services/bookings/slot_lock.rb`).  
-  - Clarification: le lock sérialise *par start_time exact*, alors que la règle métier de blocage est principalement *par overlap d’intervalles* (checks + scope overlap). Question: veut-on une protection “verrou intervalle” (non fait) ou le best-effort actuel suffit-il au MVP ?
+  - Clé = `(enseigne_id, booking_start_time.to_i)` (`app/services/bookings/slot_lock.rb`).  
+  - Clarification: le lock sérialise *par start_time exact dans une enseigne*, alors que la règle métier de blocage est principalement *par overlap d’intervalles* (checks + scope overlap). Question: veut-on une protection “verrou intervalle” (non fait) ou le best-effort actuel suffit-il au MVP ?
 
 - **Validité de `AvailableSlots` hors `Bookings::Input`**  
   - `Bookings::Input` applique l’horizon 30 jours, mais `AvailableSlots` ne le fait pas. Si un autre appel interne bypass `Input`, l’horizon peut être contourné (ambiguïté d’API interne, pas forcément un bug produit).
@@ -305,7 +244,7 @@
 - **Single source of truth** explicite pour les paramètres “cadre de réservation” (`BookingRules`) et usage cohérent côté services + modèle.
 - **Double protection concurrence**:
   - lock transactionnel PG (`SlotLock`) pour sérialiser,
-  - contrainte DB unique partielle pour interdire définitivement les doublons confirmed.
+  - contrainte DB unique partielle pour interdire définitivement les doublons `confirmed` sur une même `enseigne`.
 - **Anti-TOCTOU**: re-check de disponibilité au moment de confirmer dans la section critique (`Confirm`).
 
 ### Ce qui est fragile (impact métier)
@@ -318,7 +257,7 @@
 
 - **Définition exacte de “slot disponible”**: grille + min notice + overlap + pending actif (et le fait que “fin = début” ne bloque pas).  
 - **Règle pending vs confirmed**: pending bloque temporairement, confirmed bloque durablement; pending expiré ne bloque plus.  
-- **Concurrence**: ce qui est garanti (un seul confirmed par slot et client) vs ce qui est seulement “best effort” applicatif.
+- **Concurrence**: ce qui est garanti (un seul `confirmed` par slot et `enseigne`) vs ce qui est seulement “best effort” applicatif.
 
 ---
 

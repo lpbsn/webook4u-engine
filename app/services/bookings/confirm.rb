@@ -13,8 +13,14 @@ module Bookings
       return failure(Errors::NOT_PENDING) unless booking.pending?
       return failure(Errors::SESSION_EXPIRED) if booking.expired?
 
-      SlotLock.with_lock(client_id: booking.client_id, booking_start_time: booking.booking_start_time) do
-        if Availability.slot_blocked?(client: booking.client, service: booking.service, booking_start_time: booking.booking_start_time, exclude_booking_id: booking.id)
+      SlotLock.with_lock(enseigne_id: booking.enseigne_id, booking_start_time: booking.booking_start_time) do
+        if Availability.slot_blocked?(
+          client: booking.client,
+          enseigne: booking.enseigne,
+          service: booking.service,
+          booking_start_time: booking.booking_start_time,
+          exclude_booking_id: booking.id
+        )
           return failure(Errors::SLOT_UNAVAILABLE)
         end
 

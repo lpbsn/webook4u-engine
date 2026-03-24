@@ -8,6 +8,14 @@ class Bookings::AvailableSlotsTest < ActiveSupport::TestCase
       name: "Le Salon Des gâté",
       slug: "salon-des-gate"
     )
+    create_weekday_opening_hours_for(@client)
+
+    @enseigne = @client.enseignes.create!(
+      name: "Enseigne principale"
+    )
+    @other_enseigne = @client.enseignes.create!(
+      name: "Enseigne secondaire"
+    )
 
     @service = @client.services.create!(
       name: "Coupe homme",
@@ -36,6 +44,7 @@ class Bookings::AvailableSlotsTest < ActiveSupport::TestCase
 
       slots = Bookings::AvailableSlots.new(
         client: @client,
+        enseigne: @enseigne,
         service: @service,
         date: monday
       ).call
@@ -52,6 +61,7 @@ class Bookings::AvailableSlotsTest < ActiveSupport::TestCase
 
       slots = Bookings::AvailableSlots.new(
         client: @client,
+        enseigne: @enseigne,
         service: @service,
         date: monday
       ).call
@@ -62,11 +72,47 @@ class Bookings::AvailableSlotsTest < ActiveSupport::TestCase
     end
   end
 
+  test "uses enseigne opening hours instead of client hours when they exist" do
+    create_weekday_opening_hours_for_enseigne(@enseigne, opens_at: "10:00", closes_at: "16:00")
+
+    travel_to Time.zone.local(2026, 3, 15, 8, 0, 0) do
+      monday = Date.new(2026, 3, 16)
+
+      slots = Bookings::AvailableSlots.new(
+        client: @client,
+        enseigne: @enseigne,
+        service: @service,
+        date: monday
+      ).call
+
+      assert_not_includes slots, Time.zone.local(2026, 3, 16, 9, 0, 0)
+      assert_includes slots, Time.zone.local(2026, 3, 16, 10, 0, 0)
+      assert_includes slots, Time.zone.local(2026, 3, 16, 15, 30, 0)
+      assert_not_includes slots, Time.zone.local(2026, 3, 16, 16, 0, 0)
+    end
+  end
+
+  test "returns no slots when day has no opening hours" do
+    travel_to Time.zone.local(2026, 3, 15, 8, 0, 0) do
+      sunday = Date.new(2026, 3, 22)
+
+      slots = Bookings::AvailableSlots.new(
+        client: @client,
+        enseigne: @enseigne,
+        service: @service,
+        date: sunday
+      ).call
+
+      assert_equal [], slots
+    end
+  end
+
   test "excludes confirmed bookings from available slots" do
     travel_to Time.zone.local(2026, 3, 15, 8, 0, 0) do
       monday = Date.new(2026, 3, 16)
 
       @client.bookings.create!(
+        enseigne: @enseigne,
         service: @service,
         booking_start_time: Time.zone.local(2026, 3, 16, 10, 0, 0),
         booking_end_time: Time.zone.local(2026, 3, 16, 10, 30, 0),
@@ -78,6 +124,7 @@ class Bookings::AvailableSlotsTest < ActiveSupport::TestCase
 
       slots = Bookings::AvailableSlots.new(
         client: @client,
+        enseigne: @enseigne,
         service: @service,
         date: monday
       ).call
@@ -91,6 +138,7 @@ class Bookings::AvailableSlotsTest < ActiveSupport::TestCase
       monday = Date.new(2026, 3, 16)
 
       @client.bookings.create!(
+        enseigne: @enseigne,
         service: @service,
         booking_start_time: Time.zone.local(2026, 3, 16, 11, 0, 0),
         booking_end_time: Time.zone.local(2026, 3, 16, 11, 30, 0),
@@ -100,6 +148,7 @@ class Bookings::AvailableSlotsTest < ActiveSupport::TestCase
 
       slots = Bookings::AvailableSlots.new(
         client: @client,
+        enseigne: @enseigne,
         service: @service,
         date: monday
       ).call
@@ -113,6 +162,7 @@ class Bookings::AvailableSlotsTest < ActiveSupport::TestCase
       monday = Date.new(2026, 3, 16)
 
       @client.bookings.create!(
+        enseigne: @enseigne,
         service: @service,
         booking_start_time: Time.zone.local(2026, 3, 16, 11, 30, 0),
         booking_end_time: Time.zone.local(2026, 3, 16, 12, 0, 0),
@@ -122,6 +172,7 @@ class Bookings::AvailableSlotsTest < ActiveSupport::TestCase
 
       slots = Bookings::AvailableSlots.new(
         client: @client,
+        enseigne: @enseigne,
         service: @service,
         date: monday
       ).call
@@ -136,6 +187,7 @@ class Bookings::AvailableSlotsTest < ActiveSupport::TestCase
 
       # Booking confirmé de 08:30 à 09:30 le même jour (avant le premier slot 09:00)
       @client.bookings.create!(
+        enseigne: @enseigne,
         service: @service,
         booking_start_time: Time.zone.local(2026, 3, 16, 8, 30, 0),
         booking_end_time: Time.zone.local(2026, 3, 16, 9, 30, 0),
@@ -147,6 +199,7 @@ class Bookings::AvailableSlotsTest < ActiveSupport::TestCase
 
       slots = Bookings::AvailableSlots.new(
         client: @client,
+        enseigne: @enseigne,
         service: @service,
         date: monday
       ).call
@@ -165,6 +218,7 @@ class Bookings::AvailableSlotsTest < ActiveSupport::TestCase
 
       # Booking confirmé de la veille 23:30 à 09:30 le jour affiché
       @client.bookings.create!(
+        enseigne: @enseigne,
         service: @service,
         booking_start_time: Time.zone.local(2026, 3, 15, 23, 30, 0),
         booking_end_time:   Time.zone.local(2026, 3, 16, 9, 30, 0),
@@ -176,6 +230,7 @@ class Bookings::AvailableSlotsTest < ActiveSupport::TestCase
 
       slots = Bookings::AvailableSlots.new(
         client: @client,
+        enseigne: @enseigne,
         service: @service,
         date: monday
       ).call
@@ -185,6 +240,33 @@ class Bookings::AvailableSlotsTest < ActiveSupport::TestCase
 
       # Le créneau 09:30–10:00 ne chevauche plus -> doit rester disponible
       assert_includes slots, Time.zone.local(2026, 3, 16, 9, 30, 0)
+    end
+  end
+
+  test "booking in another enseigne does not remove the slot" do
+    travel_to Time.zone.local(2026, 3, 15, 8, 0, 0) do
+      monday = Date.new(2026, 3, 16)
+      slot = Time.zone.local(2026, 3, 16, 10, 0, 0)
+
+      @client.bookings.create!(
+        enseigne: @enseigne,
+        service: @service,
+        booking_start_time: slot,
+        booking_end_time: slot + 30.minutes,
+        booking_status: :confirmed,
+        customer_first_name: "Leonard",
+        customer_last_name: "Boisson",
+        customer_email: "leo@example.com"
+      )
+
+      slots = Bookings::AvailableSlots.new(
+        client: @client,
+        enseigne: @other_enseigne,
+        service: @service,
+        date: monday
+      ).call
+
+      assert_includes slots, slot
     end
   end
 end

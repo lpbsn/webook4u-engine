@@ -5,6 +5,8 @@ class Bookings::BlockingBookingsTest < ActiveSupport::TestCase
 
   setup do
     @client = Client.create!(name: "Salon", slug: "salon")
+    @enseigne = @client.enseignes.create!(name: "Enseigne salon")
+    @other_enseigne = @client.enseignes.create!(name: "Enseigne annexe")
     @service = @client.services.create!(name: "Coupe", duration_minutes: 30, price_cents: 2500)
   end
 
@@ -12,6 +14,7 @@ class Bookings::BlockingBookingsTest < ActiveSupport::TestCase
     travel_to Time.zone.local(2026, 3, 16, 8, 0, 0) do
       # One confirmed booking from 10:00 to 10:30
       blocking = @client.bookings.create!(
+        enseigne: @enseigne,
         service: @service,
         booking_start_time: Time.zone.local(2026, 3, 16, 10, 0, 0),
         booking_end_time:   Time.zone.local(2026, 3, 16, 10, 30, 0),
@@ -24,6 +27,7 @@ class Bookings::BlockingBookingsTest < ActiveSupport::TestCase
       # Interval 10:15–10:45 should overlap
       overlaps = Bookings::BlockingBookings.overlapping(
         client: @client,
+        enseigne: @enseigne,
         start_time: Time.zone.local(2026, 3, 16, 10, 15, 0),
         end_time:   Time.zone.local(2026, 3, 16, 10, 45, 0)
       )
@@ -39,6 +43,7 @@ class Bookings::BlockingBookingsTest < ActiveSupport::TestCase
 
       # Booking fully inside range
       inside = @client.bookings.create!(
+        enseigne: @enseigne,
         service: @service,
         booking_start_time: Time.zone.local(2026, 3, 16, 10, 0, 0),
         booking_end_time:   Time.zone.local(2026, 3, 16, 10, 30, 0),
@@ -50,6 +55,7 @@ class Bookings::BlockingBookingsTest < ActiveSupport::TestCase
 
       # Booking starting before range and ending inside
       cross = @client.bookings.create!(
+        enseigne: @enseigne,
         service: @service,
         booking_start_time: Time.zone.local(2026, 3, 16, 8, 30, 0),
         booking_end_time:   Time.zone.local(2026, 3, 16, 9, 30, 0),
@@ -61,6 +67,7 @@ class Bookings::BlockingBookingsTest < ActiveSupport::TestCase
 
       # Booking completely before range should not appear
       @client.bookings.create!(
+        enseigne: @enseigne,
         service: @service,
         booking_start_time: Time.zone.local(2026, 3, 16, 7, 0, 0),
         booking_end_time:   Time.zone.local(2026, 3, 16, 8, 0, 0),
@@ -72,6 +79,7 @@ class Bookings::BlockingBookingsTest < ActiveSupport::TestCase
 
       intervals = Bookings::BlockingBookings.intervals_for_range(
         client: @client,
+        enseigne: @enseigne,
         range_start: day_start,
         range_end: day_end
       )
@@ -80,6 +88,30 @@ class Bookings::BlockingBookingsTest < ActiveSupport::TestCase
       assert_includes intervals, [ cross.booking_start_time, cross.booking_end_time ]
       # Just ensure only two intervals are returned in this scenario
       assert_equal 2, intervals.size
+    end
+  end
+
+  test "blocking bookings are scoped to enseigne" do
+    travel_to Time.zone.local(2026, 3, 16, 8, 0, 0) do
+      booking = @client.bookings.create!(
+        enseigne: @enseigne,
+        service: @service,
+        booking_start_time: Time.zone.local(2026, 3, 16, 10, 0, 0),
+        booking_end_time: Time.zone.local(2026, 3, 16, 10, 30, 0),
+        booking_status: :confirmed,
+        customer_first_name: "Jean",
+        customer_last_name: "Dupont",
+        customer_email: "jean@example.com"
+      )
+
+      overlaps = Bookings::BlockingBookings.overlapping(
+        client: @client,
+        enseigne: @other_enseigne,
+        start_time: Time.zone.local(2026, 3, 16, 10, 0, 0),
+        end_time: Time.zone.local(2026, 3, 16, 10, 30, 0)
+      )
+
+      assert_not_includes overlaps, booking
     end
   end
 end

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_03_18_091500) do
+ActiveRecord::Schema[8.1].define(version: 2026_03_25_090000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -25,34 +25,75 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_18_091500) do
     t.string "customer_email"
     t.string "customer_first_name"
     t.string "customer_last_name"
+    t.bigint "enseigne_id", null: false
     t.bigint "service_id", null: false
     t.string "stripe_payment_intent"
     t.string "stripe_session_id"
     t.datetime "updated_at", null: false
-    t.index ["client_id", "booking_start_time"], name: "index_bookings_on_client_and_start_time_confirmed", unique: true, where: "((booking_status)::text = 'confirmed'::text)"
     t.index ["client_id"], name: "index_bookings_on_client_id"
     t.index ["confirmation_token"], name: "index_bookings_on_confirmation_token", unique: true
+    t.index ["enseigne_id", "booking_start_time"], name: "index_bookings_on_enseigne_and_start_time_confirmed", unique: true, where: "((booking_status)::text = 'confirmed'::text)"
+    t.index ["enseigne_id"], name: "index_bookings_on_enseigne_id"
     t.index ["service_id"], name: "index_bookings_on_service_id"
+  end
+
+  create_table "client_opening_hours", force: :cascade do |t|
+    t.bigint "client_id", null: false
+    t.time "closes_at", null: false
+    t.datetime "created_at", null: false
+    t.integer "day_of_week", null: false
+    t.time "opens_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["client_id", "day_of_week"], name: "index_client_opening_hours_on_client_and_day"
+    t.index ["client_id"], name: "index_client_opening_hours_on_client_id"
   end
 
   create_table "clients", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.string "name"
-    t.string "slug"
+    t.string "slug", null: false
     t.datetime "updated_at", null: false
+    t.index ["slug"], name: "index_clients_on_slug", unique: true
+  end
+
+  create_table "enseigne_opening_hours", force: :cascade do |t|
+    t.time "closes_at", null: false
+    t.datetime "created_at", null: false
+    t.integer "day_of_week", null: false
+    t.bigint "enseigne_id", null: false
+    t.time "opens_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["enseigne_id", "day_of_week"], name: "index_enseigne_opening_hours_on_enseigne_and_day"
+    t.index ["enseigne_id"], name: "index_enseigne_opening_hours_on_enseigne_id"
+  end
+
+  create_table "enseignes", force: :cascade do |t|
+    t.boolean "active", default: true, null: false
+    t.bigint "client_id", null: false
+    t.datetime "created_at", null: false
+    t.string "full_address"
+    t.string "name", null: false
+    t.datetime "updated_at", null: false
+    t.index ["client_id"], name: "index_enseignes_on_client_id"
   end
 
   create_table "services", force: :cascade do |t|
     t.bigint "client_id", null: false
     t.datetime "created_at", null: false
-    t.integer "duration_minutes"
-    t.string "name"
-    t.integer "price_cents"
+    t.integer "duration_minutes", null: false
+    t.string "name", null: false
+    t.integer "price_cents", null: false
     t.datetime "updated_at", null: false
     t.index ["client_id"], name: "index_services_on_client_id"
+    t.check_constraint "duration_minutes > 0", name: "services_duration_minutes_positive"
+    t.check_constraint "price_cents >= 0", name: "services_price_cents_non_negative"
   end
 
   add_foreign_key "bookings", "clients"
+  add_foreign_key "bookings", "enseignes"
   add_foreign_key "bookings", "services"
+  add_foreign_key "client_opening_hours", "clients"
+  add_foreign_key "enseigne_opening_hours", "enseignes"
+  add_foreign_key "enseignes", "clients"
   add_foreign_key "services", "clients"
 end

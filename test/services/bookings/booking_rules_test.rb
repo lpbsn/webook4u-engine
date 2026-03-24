@@ -31,14 +31,6 @@ class BookingRulesTest < ActiveSupport::TestCase
     assert_equal 30.minutes, BookingRules.slot_duration
   end
 
-  test "day_start_hour is 9" do
-    assert_equal 9, BookingRules.day_start_hour
-  end
-
-  test "day_end_hour is 18" do
-    assert_equal 18, BookingRules.day_end_hour
-  end
-
   test "min_notice_minutes is 30" do
     assert_equal 30, BookingRules.min_notice_minutes
   end
@@ -79,35 +71,6 @@ class BookingRulesTest < ActiveSupport::TestCase
       expires = BookingRules.pending_expires_at
       assert_equal BookingRules.pending_expiration_minutes.minutes.from_now, expires
     end
-  end
-
-  # --- bookable_day? ---
-
-  test "bookable_day? returns true for Monday through Friday" do
-    [ Date.new(2026, 3, 16),  # Monday
-      Date.new(2026, 3, 17),  # Tuesday
-      Date.new(2026, 3, 18),  # Wednesday
-      Date.new(2026, 3, 19),  # Thursday
-      Date.new(2026, 3, 20)   # Friday
-    ].each do |d|
-      assert BookingRules.bookable_day?(d), "Expected #{d} (weekday) to be bookable"
-    end
-  end
-
-  test "bookable_day? returns false for Saturday and Sunday" do
-    [ Date.new(2026, 3, 21),  # Saturday
-      Date.new(2026, 3, 22)   # Sunday
-    ].each do |d|
-      assert_not BookingRules.bookable_day?(d), "Expected #{d} (weekend) not to be bookable"
-    end
-  end
-
-  test "bookable_day? accepts a Time and converts to date" do
-    monday_noon = Time.zone.local(2026, 3, 16, 12, 0, 0)
-    assert BookingRules.bookable_day?(monday_noon)
-
-    saturday_noon = Time.zone.local(2026, 3, 21, 12, 0, 0)
-    assert_not BookingRules.bookable_day?(saturday_noon)
   end
 
   # --- booking_expired? ---

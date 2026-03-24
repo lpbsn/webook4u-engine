@@ -11,5 +11,24 @@ module ActiveSupport
     fixtures :all
 
     # Add more helper methods to be used by all tests here...
+    def create_weekday_opening_hours_for(client, opens_at: "09:00", closes_at: "18:00")
+      [ 1, 2, 3, 4, 5 ].each do |day_of_week|
+        client.client_opening_hours.create!(
+          day_of_week: day_of_week,
+          opens_at: opens_at,
+          closes_at: closes_at
+        )
+      end
+    end
+
+    def create_weekday_opening_hours_for_enseigne(enseigne, opens_at: "09:00", closes_at: "18:00")
+      [ 1, 2, 3, 4, 5 ].each do |day_of_week|
+        enseigne.enseigne_opening_hours.create!(
+          day_of_week: day_of_week,
+          opens_at: opens_at,
+          closes_at: closes_at
+        )
+      end
+    end
   end
 end

@@ -5,6 +5,7 @@ require "test_helper"
 class ServiceTest < ActiveSupport::TestCase
   setup do
     @client = Client.create!(name: "Salon Test", slug: "salon-test-svc")
+    @enseigne = @client.enseignes.create!(name: "Enseigne test")
   end
 
   test "valid service saves without errors" do
@@ -24,10 +25,28 @@ class ServiceTest < ActiveSupport::TestCase
     assert_includes service.errors[:duration_minutes], "can't be blank"
   end
 
+  test "duration_minutes must be strictly positive" do
+    zero_duration = Service.new(client: @client, name: "Coupe", duration_minutes: 0, price_cents: 2500)
+    negative_duration = Service.new(client: @client, name: "Coupe", duration_minutes: -30, price_cents: 2500)
+
+    assert_not zero_duration.valid?
+    assert_includes zero_duration.errors[:duration_minutes], "must be greater than 0"
+
+    assert_not negative_duration.valid?
+    assert_includes negative_duration.errors[:duration_minutes], "must be greater than 0"
+  end
+
   test "price_cents is required" do
     service = Service.new(client: @client, name: "Coupe", duration_minutes: 30, price_cents: nil)
     assert_not service.valid?
     assert_includes service.errors[:price_cents], "can't be blank"
+  end
+
+  test "price_cents must be positive or zero" do
+    service = Service.new(client: @client, name: "Coupe", duration_minutes: 30, price_cents: -1)
+
+    assert_not service.valid?
+    assert_includes service.errors[:price_cents], "must be greater than or equal to 0"
   end
 
   test "service must belong to a client" do
@@ -35,9 +54,60 @@ class ServiceTest < ActiveSupport::TestCase
     assert_not service.valid?
   end
 
+  test "database enforces non null name" do
+    timestamp = Time.current
+
+    assert_raises ActiveRecord::NotNullViolation do
+      Service.insert_all!([
+        { client_id: @client.id, name: nil, duration_minutes: 30, price_cents: 2500, created_at: timestamp, updated_at: timestamp }
+      ])
+    end
+  end
+
+  test "database enforces non null duration_minutes" do
+    timestamp = Time.current
+
+    assert_raises ActiveRecord::NotNullViolation do
+      Service.insert_all!([
+        { client_id: @client.id, name: "Coupe", duration_minutes: nil, price_cents: 2500, created_at: timestamp, updated_at: timestamp }
+      ])
+    end
+  end
+
+  test "database enforces non null price_cents" do
+    timestamp = Time.current
+
+    assert_raises ActiveRecord::NotNullViolation do
+      Service.insert_all!([
+        { client_id: @client.id, name: "Coupe", duration_minutes: 30, price_cents: nil, created_at: timestamp, updated_at: timestamp }
+      ])
+    end
+  end
+
+  test "database enforces positive duration_minutes" do
+    timestamp = Time.current
+
+    assert_raises ActiveRecord::StatementInvalid do
+      Service.insert_all!([
+        { client_id: @client.id, name: "Coupe", duration_minutes: 0, price_cents: 2500, created_at: timestamp, updated_at: timestamp }
+      ])
+    end
+  end
+
+  test "database enforces non negative price_cents" do
+    timestamp = Time.current
+
+    assert_raises ActiveRecord::StatementInvalid do
+      Service.insert_all!([
+        { client_id: @client.id, name: "Coupe", duration_minutes: 30, price_cents: -1, created_at: timestamp, updated_at: timestamp }
+      ])
+    end
+  end
+
   test "destroying service destroys associated bookings" do
     service = @client.services.create!(name: "Coupe homme", duration_minutes: 30, price_cents: 2500)
     @client.bookings.create!(
+      enseigne: @enseigne,
       service: service,
       booking_start_time: 2.days.from_now.change(hour: 11, min: 0, sec: 0),
       booking_end_time: 2.days.from_now.change(hour: 11, min: 30, sec: 0),

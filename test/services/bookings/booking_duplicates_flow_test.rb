@@ -8,6 +8,11 @@ class BookingDuplicatesFlowTest < ActionDispatch::IntegrationTest
       name: "Le Salon Des gâté",
       slug: "salon-des-gate"
     )
+    create_weekday_opening_hours_for(@client)
+
+    @enseigne = @client.enseignes.create!(
+      name: "Enseigne principale"
+    )
 
     @service = @client.services.create!(
       name: "Coupe homme",
@@ -19,11 +24,12 @@ class BookingDuplicatesFlowTest < ActionDispatch::IntegrationTest
   # =========================================================
   # Un créneau déjà réservé en confirmed doit être refusé
   # =========================================================
-  test "new refuses a slot already confirmed" do
+  test "create_pending refuses a slot already confirmed" do
     travel_to Time.zone.local(2026, 3, 15, 8, 0, 0) do
       slot = Time.zone.local(2026, 3, 16, 10, 0, 0)
 
       @client.bookings.create!(
+        enseigne: @enseigne,
         service: @service,
         booking_start_time: slot,
         booking_end_time: slot + 30.minutes,
@@ -34,11 +40,13 @@ class BookingDuplicatesFlowTest < ActionDispatch::IntegrationTest
       )
 
       assert_no_difference "Booking.count" do
-        get new_service_booking_path(@client.slug, @service, start_time: slot)
+        post service_bookings_path(@client.slug, @service),
+             params: { start_time: slot, enseigne_id: @enseigne.id }
       end
 
       assert_redirected_to public_client_path(
         @client.slug,
+        enseigne_id: @enseigne.id,
         service_id: @service.id,
         date: slot.to_date
       )
@@ -48,11 +56,12 @@ class BookingDuplicatesFlowTest < ActionDispatch::IntegrationTest
   # =========================================================
   # Un créneau déjà réservé en pending non expiré doit être refusé
   # =========================================================
-  test "new refuses a slot already blocked by active pending" do
+  test "create_pending refuses a slot already blocked by active pending" do
     travel_to Time.zone.local(2026, 3, 15, 8, 0, 0) do
       slot = Time.zone.local(2026, 3, 16, 11, 0, 0)
 
       @client.bookings.create!(
+        enseigne: @enseigne,
         service: @service,
         booking_start_time: slot,
         booking_end_time: slot + 30.minutes,
@@ -61,11 +70,13 @@ class BookingDuplicatesFlowTest < ActionDispatch::IntegrationTest
       )
 
       assert_no_difference "Booking.count" do
-        get new_service_booking_path(@client.slug, @service, start_time: slot)
+        post service_bookings_path(@client.slug, @service),
+             params: { start_time: slot, enseigne_id: @enseigne.id }
       end
 
       assert_redirected_to public_client_path(
         @client.slug,
+        enseigne_id: @enseigne.id,
         service_id: @service.id,
         date: slot.to_date
       )
@@ -75,11 +86,12 @@ class BookingDuplicatesFlowTest < ActionDispatch::IntegrationTest
   # =========================================================
   # Un pending expiré ne doit plus bloquer le créneau
   # =========================================================
-  test "new allows a slot previously blocked by expired pending" do
+  test "create_pending allows a slot previously blocked by expired pending" do
     travel_to Time.zone.local(2026, 3, 15, 8, 0, 0) do
       slot = Time.zone.local(2026, 3, 16, 12, 0, 0)
 
       @client.bookings.create!(
+        enseigne: @enseigne,
         service: @service,
         booking_start_time: slot,
         booking_end_time: slot + 30.minutes,
@@ -88,10 +100,12 @@ class BookingDuplicatesFlowTest < ActionDispatch::IntegrationTest
       )
 
       assert_difference "Booking.count", 1 do
-        get new_service_booking_path(@client.slug, @service, start_time: slot)
+        post service_bookings_path(@client.slug, @service),
+             params: { start_time: slot, enseigne_id: @enseigne.id }
       end
 
       booking = Booking.last
+      assert_redirected_to pending_booking_path(@client.slug, booking)
       assert_equal "pending", booking.booking_status
       assert_equal slot, booking.booking_start_time
     end
@@ -106,6 +120,7 @@ class BookingDuplicatesFlowTest < ActionDispatch::IntegrationTest
       slot = Time.zone.local(2026, 3, 16, 13, 0, 0)
 
       pending_booking = @client.bookings.create!(
+        enseigne: @enseigne,
         service: @service,
         booking_start_time: slot,
         booking_end_time: slot + 30.minutes,
@@ -114,6 +129,7 @@ class BookingDuplicatesFlowTest < ActionDispatch::IntegrationTest
       )
 
       @client.bookings.create!(
+        enseigne: @enseigne,
         service: @service,
         booking_start_time: slot,
         booking_end_time: slot + 30.minutes,
@@ -133,6 +149,7 @@ class BookingDuplicatesFlowTest < ActionDispatch::IntegrationTest
 
       assert_redirected_to public_client_path(
         @client.slug,
+        enseigne_id: @enseigne.id,
         service_id: @service.id,
         date: slot.to_date
       )
@@ -147,13 +164,14 @@ class BookingDuplicatesFlowTest < ActionDispatch::IntegrationTest
   # =========================================================
   # Vérifie la protection finale côté base de données :
   # impossible d'avoir 2 confirmed sur le même créneau
-  # pour le même client
+  # dans la même enseigne
   # =========================================================
   test "database unique index prevents duplicate confirmed bookings on the same slot" do
     travel_to Time.zone.local(2026, 3, 15, 8, 0, 0) do
       slot = Time.zone.local(2026, 3, 16, 14, 0, 0)
 
       @client.bookings.create!(
+        enseigne: @enseigne,
         service: @service,
         booking_start_time: slot,
         booking_end_time: slot + 30.minutes,
@@ -165,6 +183,38 @@ class BookingDuplicatesFlowTest < ActionDispatch::IntegrationTest
 
       assert_raises ActiveRecord::RecordNotUnique do
         @client.bookings.create!(
+          enseigne: @enseigne,
+          service: @service,
+          booking_start_time: slot,
+          booking_end_time: slot + 30.minutes,
+          booking_status: :confirmed,
+          customer_first_name: "Other",
+          customer_last_name: "User",
+          customer_email: "other@example.com"
+        )
+      end
+    end
+  end
+
+  test "same confirmed slot is allowed in another enseigne of the same client" do
+    travel_to Time.zone.local(2026, 3, 15, 8, 0, 0) do
+      slot = Time.zone.local(2026, 3, 16, 14, 30, 0)
+      other_enseigne = @client.enseignes.create!(name: "Enseigne secondaire")
+
+      @client.bookings.create!(
+        enseigne: @enseigne,
+        service: @service,
+        booking_start_time: slot,
+        booking_end_time: slot + 30.minutes,
+        booking_status: :confirmed,
+        customer_first_name: "Leonard",
+        customer_last_name: "Boisson",
+        customer_email: "leo@example.com"
+      )
+
+      assert_nothing_raised do
+        @client.bookings.create!(
+          enseigne: other_enseigne,
           service: @service,
           booking_start_time: slot,
           booking_end_time: slot + 30.minutes,
@@ -179,7 +229,7 @@ class BookingDuplicatesFlowTest < ActionDispatch::IntegrationTest
 
   # =========================================================
   # Pour un autre client, le même créneau doit rester possible
-  # (l'unicité est par client)
+  # (l'unicité n'est plus par client)
   # =========================================================
   test "same slot is allowed for another client" do
     travel_to Time.zone.local(2026, 3, 15, 8, 0, 0) do
@@ -187,6 +237,8 @@ class BookingDuplicatesFlowTest < ActionDispatch::IntegrationTest
         name: "Maigris Mon Gros",
         slug: "maigris-mon-gros"
       )
+      create_weekday_opening_hours_for(other_client)
+      other_enseigne = other_client.enseignes.create!(name: "Enseigne MG")
 
       other_service = other_client.services.create!(
         name: "Séance individuelle",
@@ -197,6 +249,7 @@ class BookingDuplicatesFlowTest < ActionDispatch::IntegrationTest
       slot = Time.zone.local(2026, 3, 16, 15, 0, 0)
 
       @client.bookings.create!(
+        enseigne: @enseigne,
         service: @service,
         booking_start_time: slot,
         booking_end_time: slot + 30.minutes,
@@ -208,6 +261,7 @@ class BookingDuplicatesFlowTest < ActionDispatch::IntegrationTest
 
       assert_nothing_raised do
         other_client.bookings.create!(
+          enseigne: other_enseigne,
           service: other_service,
           booking_start_time: slot,
           booking_end_time: slot + 30.minutes,

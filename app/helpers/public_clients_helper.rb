@@ -1,4 +1,12 @@
 module PublicClientsHelper
+  def public_client_selected_enseigne_name(selected_enseigne)
+    selected_enseigne&.name || "—"
+  end
+
+  def public_client_selected_enseigne_address(selected_enseigne)
+    selected_enseigne&.full_address.presence || "—"
+  end
+
   def public_client_selected_service_name(selected_service)
     selected_service&.name || "—"
   end

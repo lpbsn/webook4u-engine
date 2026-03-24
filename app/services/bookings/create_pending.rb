@@ -4,29 +4,42 @@ module Bookings
   class CreatePending
     Result = Struct.new(:success?, :booking, :error_code, :error_message, keyword_init: true)
 
-    def initialize(client:, service:, booking_start_time:)
+    def initialize(client:, service:, booking_start_time:, enseigne:)
       @client = client
+      @enseigne = enseigne
       @service = service
       @booking_start_time = booking_start_time
     end
 
     def call
       return failure(Errors::INVALID_SLOT) if booking_start_time.nil?
+      return failure(Errors::PENDING_CREATION_FAILED) unless valid_enseigne_context?
 
       booking_end_time = booking_start_time + service.duration_minutes.minutes
       booking = nil
 
-      SlotLock.with_lock(client_id: client.id, booking_start_time: booking_start_time) do
-        if Availability.slot_blocked?(client: client, service: service, booking_start_time: booking_start_time)
+      SlotLock.with_lock(enseigne_id: enseigne.id, booking_start_time: booking_start_time) do
+        if Availability.slot_blocked?(
+          client: client,
+          enseigne: enseigne,
+          service: service,
+          booking_start_time: booking_start_time
+        )
           return failure(Errors::SLOT_UNAVAILABLE)
         end
 
-        unless Availability.valid_generated_slot?(client: client, service: service, booking_start_time: booking_start_time)
+        unless Availability.valid_generated_slot?(
+          client: client,
+          enseigne: enseigne,
+          service: service,
+          booking_start_time: booking_start_time
+        )
           return failure(Errors::SLOT_NOT_BOOKABLE)
         end
 
         booking = Booking.create!(
           client: client,
+          enseigne: enseigne,
           service: service,
           booking_start_time: booking_start_time,
           booking_end_time: booking_end_time,
@@ -42,7 +55,11 @@ module Bookings
 
     private
 
-    attr_reader :client, :service, :booking_start_time
+    attr_reader :client, :enseigne, :service, :booking_start_time
+
+    def valid_enseigne_context?
+      enseigne.present? && enseigne.active? && enseigne.client_id == client.id
+    end
 
     def success(booking)
       Result.new(success?: true, booking: booking, error_code: nil, error_message: nil)

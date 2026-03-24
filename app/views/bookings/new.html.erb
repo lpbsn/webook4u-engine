@@ -1,6 +1,6 @@
 <div class="booking-header">
   <h1 class="booking-header-title"><%= @client.name %></h1>
-  <p class="booking-header-subtitle"><%= @service.name %></p>
+  <p class="booking-header-subtitle"><%= @enseigne.name %> — <%= @service.name %></p>
 </div>
 
 <p class="booking-section-meta">
@@ -10,6 +10,10 @@
 <div class="booking-summary">
   <h2 class="booking-section-title">Créneau choisi</h2>
   <div class="booking-fields">
+    <p><strong>Client :</strong> <%= @client.name %></p>
+    <p><strong>Enseigne :</strong> <%= booking_enseigne_name(@booking) %></p>
+    <p><strong>Adresse :</strong> <%= booking_enseigne_address(@booking) %></p>
+    <p><strong>Prestation :</strong> <%= @service.name %></p>
     <p><%= @booking_start_time.strftime("%d/%m/%Y à %H:%M") %></p>
   </div>
 </div>
@@ -25,23 +29,35 @@
   </div>
 <% end %>
 
-<%= form_with model: @booking, url: confirm_booking_path(@client.slug, @booking), method: :post do |form| %>
-  <div class="field">
-    <label class="field-label" for="booking_customer_first_name">Prénom</label>
-    <%= form.text_field :customer_first_name, required: true, class: "field-input" %>
-  </div>
+<% if @booking.persisted? %>
+  <%= form_with model: @booking, url: confirm_booking_path(@client.slug, @booking), method: :post do |form| %>
+    <div class="field">
+      <label class="field-label" for="booking_customer_first_name">Prénom</label>
+      <%= form.text_field :customer_first_name, required: true, class: "field-input" %>
+    </div>
 
-  <div class="field">
-    <label class="field-label" for="booking_customer_last_name">Nom</label>
-    <%= form.text_field :customer_last_name, required: true, class: "field-input" %>
-  </div>
+    <div class="field">
+      <label class="field-label" for="booking_customer_last_name">Nom</label>
+      <%= form.text_field :customer_last_name, required: true, class: "field-input" %>
+    </div>
 
-  <div class="field">
-    <label class="field-label" for="booking_customer_email">Email</label>
-    <%= form.email_field :customer_email, required: true, class: "field-input" %>
-  </div>
+    <div class="field">
+      <label class="field-label" for="booking_customer_email">Email</label>
+      <%= form.email_field :customer_email, required: true, class: "field-input" %>
+    </div>
 
-  <div class="field">
-    <%= form.submit "Valider la réservation", class: "btn-primary" %>
-  </div>
+    <div class="field">
+      <%= form.submit "Valider la réservation", class: "btn-primary" %>
+    </div>
+  <% end %>
+<% else %>
+  <%= form_with url: service_bookings_path(@client.slug, @service), method: :post, local: true do %>
+    <%= hidden_field_tag :enseigne_id, @enseigne.id %>
+    <%= hidden_field_tag :date, @booking_date %>
+    <%= hidden_field_tag :start_time, @booking_start_time.iso8601 %>
+
+    <div class="field">
+      <%= submit_tag "Continuer", class: "btn-primary" %>
+    </div>
+  <% end %>
 <% end %>

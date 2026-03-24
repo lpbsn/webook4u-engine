@@ -4,32 +4,33 @@ module Bookings
   # Génère les créneaux disponibles pour une prestation à une date donnée.
   # Prend en compte : horaires, durée, créneaux réservés, min notice, jours non ouvrés.
   class AvailableSlots
-    def initialize(client:, service:, date:)
+    def initialize(client:, service:, date:, enseigne: nil)
       @client = client
       @service = service
       @date = date.to_date
+      @enseigne = enseigne
     end
 
     def call
-      return [] unless BookingRules.bookable_day?(date)
+      return [] if opening_intervals.empty?
 
       slots.reject { |slot| slot_overlaps_blocking_booking?(slot) }
     end
 
     private
 
-    attr_reader :client, :service, :date
+    attr_reader :client, :service, :date, :enseigne
 
     def slots
-      start_of_day = date.in_time_zone.change(hour: BookingRules.day_start_hour, min: 0)
-      end_of_day = date.in_time_zone.change(hour: BookingRules.day_end_hour, min: 0)
-
       result = []
-      current_slot = start_of_day
 
-      while current_slot + service.duration_minutes.minutes <= end_of_day
-        result << current_slot
-        current_slot += BookingRules.slot_duration
+      opening_intervals.each do |(start_of_day, end_of_day)|
+        current_slot = start_of_day
+
+        while current_slot + service.duration_minutes.minutes <= end_of_day
+          result << current_slot
+          current_slot += BookingRules.slot_duration
+        end
       end
 
       result.reject { |slot| slot < BookingRules.minimum_bookable_time }
@@ -37,15 +38,21 @@ module Bookings
 
     def blocking_intervals_for_day
       @blocking_intervals_for_day ||= begin
-        day_start = date.in_time_zone.change(hour: BookingRules.day_start_hour, min: 0)
-        day_end   = date.in_time_zone.change(hour: BookingRules.day_end_hour,  min: 0)
-
         BlockingBookings.intervals_for_range(
           client: client,
-          range_start: day_start,
-          range_end: day_end
+          enseigne: enseigne,
+          range_start: opening_intervals.first.first,
+          range_end: opening_intervals.last.last
         )
       end
+    end
+
+    def opening_intervals
+      @opening_intervals ||= ScheduleResolver.new(
+        client: client,
+        enseigne: enseigne,
+        date: date
+      ).call
     end
 
     def slot_overlaps_blocking_booking?(slot_start)
@@ -55,6 +62,5 @@ module Bookings
         Availability.overlap?(booking_start, booking_end, slot_start, slot_end)
       end
     end
-
   end
 end

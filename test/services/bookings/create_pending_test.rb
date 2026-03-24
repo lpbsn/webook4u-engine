@@ -8,6 +8,11 @@ class Bookings::CreatePendingTest < ActiveSupport::TestCase
       name: "Le Salon Des gâté",
       slug: "salon-des-gate"
     )
+    create_weekday_opening_hours_for(@client)
+
+    @enseigne = @client.enseignes.create!(
+      name: "Enseigne principale"
+    )
 
     @service = @client.services.create!(
       name: "Coupe homme",
@@ -22,6 +27,7 @@ class Bookings::CreatePendingTest < ActiveSupport::TestCase
 
       result = Bookings::CreatePending.new(
         client: @client,
+        enseigne: @enseigne,
         service: @service,
         booking_start_time: slot
       ).call
@@ -32,15 +38,33 @@ class Bookings::CreatePendingTest < ActiveSupport::TestCase
 
       booking = result.booking
       assert_equal "pending", booking.booking_status, "Booking should be pending after CreatePending success"
+      assert_equal @enseigne.id, booking.enseigne_id
       assert_equal slot, booking.booking_start_time
       assert_equal slot + 30.minutes, booking.booking_end_time
       assert_not_nil booking.booking_expires_at
     end
   end
 
+  test "creates a pending booking with the explicit enseigne provided by the public flow" do
+    travel_to Time.zone.local(2026, 3, 15, 8, 0, 0) do
+      slot = Time.zone.local(2026, 3, 16, 10, 30, 0)
+
+      result = Bookings::CreatePending.new(
+        client: @client,
+        enseigne: @enseigne,
+        service: @service,
+        booking_start_time: slot
+      ).call
+
+      assert result.success?
+      assert_equal @enseigne.id, result.booking.enseigne_id
+    end
+  end
+
   test "fails when booking_start_time is nil" do
     result = Bookings::CreatePending.new(
       client: @client,
+      enseigne: @enseigne,
       service: @service,
       booking_start_time: nil
     ).call
@@ -57,6 +81,7 @@ class Bookings::CreatePendingTest < ActiveSupport::TestCase
 
       result = Bookings::CreatePending.new(
         client: @client,
+        enseigne: @enseigne,
         service: @service,
         booking_start_time: invalid_slot
       ).call
@@ -73,6 +98,7 @@ class Bookings::CreatePendingTest < ActiveSupport::TestCase
       slot = Time.zone.local(2026, 3, 16, 11, 0, 0)
 
       @client.bookings.create!(
+        enseigne: @enseigne,
         service: @service,
         booking_start_time: slot,
         booking_end_time: slot + 30.minutes,
@@ -84,6 +110,7 @@ class Bookings::CreatePendingTest < ActiveSupport::TestCase
 
       result = Bookings::CreatePending.new(
         client: @client,
+        enseigne: @enseigne,
         service: @service,
         booking_start_time: slot
       ).call
@@ -101,6 +128,7 @@ class Bookings::CreatePendingTest < ActiveSupport::TestCase
       confirmed_end   = confirmed_start + 30.minutes
 
       @client.bookings.create!(
+        enseigne: @enseigne,
         service: @service,
         booking_start_time: confirmed_start,
         booking_end_time: confirmed_end,
@@ -114,6 +142,7 @@ class Bookings::CreatePendingTest < ActiveSupport::TestCase
 
       result = Bookings::CreatePending.new(
         client: @client,
+        enseigne: @enseigne,
         service: @service,
         booking_start_time: overlapping_start
       ).call
@@ -131,6 +160,7 @@ class Bookings::CreatePendingTest < ActiveSupport::TestCase
       confirmed_end   = confirmed_start + 30.minutes
 
       @client.bookings.create!(
+        enseigne: @enseigne,
         service: @service,
         booking_start_time: confirmed_start,
         booking_end_time: confirmed_end,
@@ -144,6 +174,7 @@ class Bookings::CreatePendingTest < ActiveSupport::TestCase
 
       result = Bookings::CreatePending.new(
         client: @client,
+        enseigne: @enseigne,
         service: @service,
         booking_start_time: border_start
       ).call
@@ -159,6 +190,7 @@ class Bookings::CreatePendingTest < ActiveSupport::TestCase
       slot = Time.zone.local(2026, 3, 16, 12, 0, 0)
 
       @client.bookings.create!(
+        enseigne: @enseigne,
         service: @service,
         booking_start_time: slot,
         booking_end_time: slot + 30.minutes,
@@ -168,6 +200,7 @@ class Bookings::CreatePendingTest < ActiveSupport::TestCase
 
       result = Bookings::CreatePending.new(
         client: @client,
+        enseigne: @enseigne,
         service: @service,
         booking_start_time: slot
       ).call
@@ -184,6 +217,7 @@ class Bookings::CreatePendingTest < ActiveSupport::TestCase
       slot = Time.zone.local(2026, 3, 16, 13, 0, 0)
 
       @client.bookings.create!(
+        enseigne: @enseigne,
         service: @service,
         booking_start_time: slot,
         booking_end_time: slot + 30.minutes,
@@ -193,6 +227,7 @@ class Bookings::CreatePendingTest < ActiveSupport::TestCase
 
       result = Bookings::CreatePending.new(
         client: @client,
+        enseigne: @enseigne,
         service: @service,
         booking_start_time: slot
       ).call
@@ -200,6 +235,56 @@ class Bookings::CreatePendingTest < ActiveSupport::TestCase
       assert result.success?
       assert_equal "pending", result.booking.booking_status
       assert_equal slot, result.booking.booking_start_time
+    end
+  end
+
+  test "fails without explicit enseigne" do
+    travel_to Time.zone.local(2026, 3, 15, 8, 0, 0) do
+      slot = Time.zone.local(2026, 3, 16, 16, 0, 0)
+
+      result = Bookings::CreatePending.new(
+        client: @client,
+        enseigne: nil,
+        service: @service,
+        booking_start_time: slot
+      ).call
+
+      assert_not result.success?
+      assert_equal Bookings::Errors::PENDING_CREATION_FAILED, result.error_code
+    end
+  end
+
+  test "fails with inactive enseigne" do
+    inactive_enseigne = @client.enseignes.create!(name: "Inactive", active: false)
+
+    travel_to Time.zone.local(2026, 3, 15, 8, 0, 0) do
+      slot = Time.zone.local(2026, 3, 16, 16, 30, 0)
+
+      result = Bookings::CreatePending.new(
+        client: @client,
+        enseigne: inactive_enseigne,
+        service: @service,
+        booking_start_time: slot
+      ).call
+
+      assert_not result.success?
+      assert_equal Bookings::Errors::PENDING_CREATION_FAILED, result.error_code
+    end
+  end
+
+  test "uses enseigne opening hours when the client has a single enseigne" do
+    create_weekday_opening_hours_for_enseigne(@enseigne, opens_at: "10:00", closes_at: "16:00")
+
+    travel_to Time.zone.local(2026, 3, 15, 8, 0, 0) do
+      result = Bookings::CreatePending.new(
+        client: @client,
+        enseigne: @enseigne,
+        service: @service,
+        booking_start_time: Time.zone.local(2026, 3, 16, 9, 0, 0)
+      ).call
+
+      assert_not result.success?
+      assert_equal Bookings::Errors::SLOT_NOT_BOOKABLE, result.error_code
     end
   end
 end

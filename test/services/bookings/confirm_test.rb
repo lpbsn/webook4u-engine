@@ -9,6 +9,13 @@ class Bookings::ConfirmTest < ActiveSupport::TestCase
       slug: "salon-des-gate"
     )
 
+    @enseigne = @client.enseignes.create!(
+      name: "Enseigne principale"
+    )
+    @other_enseigne = @client.enseignes.create!(
+      name: "Enseigne secondaire"
+    )
+
     @service = @client.services.create!(
       name: "Coupe homme",
       duration_minutes: 30,
@@ -19,6 +26,7 @@ class Bookings::ConfirmTest < ActiveSupport::TestCase
   test "confirms a valid pending booking" do
     travel_to Time.zone.local(2026, 3, 15, 8, 0, 0) do
       booking = @client.bookings.create!(
+        enseigne: @enseigne,
         service: @service,
         booking_start_time: Time.zone.local(2026, 3, 16, 10, 0, 0),
         booking_end_time: Time.zone.local(2026, 3, 16, 10, 30, 0),
@@ -50,6 +58,7 @@ class Bookings::ConfirmTest < ActiveSupport::TestCase
 
   test "fails when booking is no longer pending" do
     booking = @client.bookings.create!(
+      enseigne: @enseigne,
       service: @service,
       booking_start_time: Time.zone.local(2026, 3, 16, 11, 0, 0),
       booking_end_time: Time.zone.local(2026, 3, 16, 11, 30, 0),
@@ -77,6 +86,7 @@ class Bookings::ConfirmTest < ActiveSupport::TestCase
   test "fails when pending booking is expired" do
     travel_to Time.zone.local(2026, 3, 15, 8, 0, 0) do
       booking = @client.bookings.create!(
+        enseigne: @enseigne,
         service: @service,
         booking_start_time: Time.zone.local(2026, 3, 16, 12, 0, 0),
         booking_end_time: Time.zone.local(2026, 3, 16, 12, 30, 0),
@@ -104,6 +114,7 @@ class Bookings::ConfirmTest < ActiveSupport::TestCase
       slot = Time.zone.local(2026, 3, 16, 13, 0, 0)
 
       booking = @client.bookings.create!(
+        enseigne: @enseigne,
         service: @service,
         booking_start_time: slot,
         booking_end_time: slot + 30.minutes,
@@ -112,6 +123,7 @@ class Bookings::ConfirmTest < ActiveSupport::TestCase
       )
 
       @client.bookings.create!(
+        enseigne: @enseigne,
         service: @service,
         booking_start_time: slot,
         booking_end_time: slot + 30.minutes,
@@ -139,12 +151,52 @@ class Bookings::ConfirmTest < ActiveSupport::TestCase
     end
   end
 
+  test "confirmation ignores bookings from another enseigne of the same client" do
+    travel_to Time.zone.local(2026, 3, 15, 8, 0, 0) do
+      slot = Time.zone.local(2026, 3, 16, 13, 30, 0)
+
+      booking = @client.bookings.create!(
+        enseigne: @enseigne,
+        service: @service,
+        booking_start_time: slot,
+        booking_end_time: slot + 30.minutes,
+        booking_status: :pending,
+        booking_expires_at: BookingRules.pending_expires_at
+      )
+
+      @client.bookings.create!(
+        enseigne: @other_enseigne,
+        service: @service,
+        booking_start_time: slot,
+        booking_end_time: slot + 30.minutes,
+        booking_status: :confirmed,
+        customer_first_name: "Other",
+        customer_last_name: "User",
+        customer_email: "other@example.com"
+      )
+
+      result = Bookings::Confirm.new(
+        booking: booking,
+        booking_params: {
+          customer_first_name: "Léonard",
+          customer_last_name: "Boisson",
+          customer_email: "leo@example.com"
+        }
+      ).call
+
+      assert result.success?
+      booking.reload
+      assert_equal "confirmed", booking.booking_status
+    end
+  end
+
   test "fails when another booking with overlapping interval blocks confirmation" do
     travel_to Time.zone.local(2026, 3, 15, 8, 0, 0) do
       pending_start = Time.zone.local(2026, 3, 16, 10, 0, 0)
       pending_end   = pending_start + 30.minutes
 
       booking = @client.bookings.create!(
+        enseigne: @enseigne,
         service: @service,
         booking_start_time: pending_start,
         booking_end_time: pending_end,
@@ -154,6 +206,7 @@ class Bookings::ConfirmTest < ActiveSupport::TestCase
 
       # Booking confirmé qui overlap partiellement (10:15–10:45)
       @client.bookings.create!(
+        enseigne: @enseigne,
         service: @service,
         booking_start_time: Time.zone.local(2026, 3, 16, 10, 15, 0),
         booking_end_time: Time.zone.local(2026, 3, 16, 10, 45, 0),
@@ -187,6 +240,7 @@ class Bookings::ConfirmTest < ActiveSupport::TestCase
       first_end   = first_start + 30.minutes
 
       @client.bookings.create!(
+        enseigne: @enseigne,
         service: @service,
         booking_start_time: first_start,
         booking_end_time: first_end,
@@ -197,6 +251,7 @@ class Bookings::ConfirmTest < ActiveSupport::TestCase
       )
 
       booking = @client.bookings.create!(
+        enseigne: @enseigne,
         service: @service,
         booking_start_time: first_end,
         booking_end_time: first_end + 30.minutes,
@@ -222,6 +277,7 @@ class Bookings::ConfirmTest < ActiveSupport::TestCase
   test "fails when booking params are invalid" do
     travel_to Time.zone.local(2026, 3, 15, 8, 0, 0) do
       booking = @client.bookings.create!(
+        enseigne: @enseigne,
         service: @service,
         booking_start_time: Time.zone.local(2026, 3, 16, 14, 0, 0),
         booking_end_time: Time.zone.local(2026, 3, 16, 14, 30, 0),

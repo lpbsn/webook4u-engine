@@ -3,6 +3,7 @@ class Booking < ApplicationRecord
   # ASSOCIATIONS
   # =========================================================
   belongs_to :client
+  belongs_to :enseigne
   belongs_to :service
 
   # =========================================================
@@ -38,6 +39,7 @@ class Booking < ApplicationRecord
   # VALIDATIONS MÉTIER
   # =========================================================
   validate :booking_end_time_after_booking_start_time
+  validate :enseigne_belongs_to_client
   validate :service_belongs_to_client
 
   # =========================================================
@@ -68,6 +70,13 @@ class Booking < ApplicationRecord
     return if booking_end_time > booking_start_time
 
     errors.add(:booking_end_time, "must be after booking_start_time")
+  end
+
+  def enseigne_belongs_to_client
+    return if client.blank? || enseigne.blank?
+    return if enseigne.client_id == client_id
+
+    errors.add(:enseigne, "must belong to the same client")
   end
 
   def service_belongs_to_client

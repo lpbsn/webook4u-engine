@@ -13,10 +13,9 @@
   `test/services/bookings/confirm_test.rb`  
   `test/services/bookings/input_test.rb`  
   `test/services/bookings/booking_rules_test.rb`  
-  `test/services/bookings/blocking_bookings_test.rb`  
-  `test/services/bookings/rate_limit_test.rb`
+  `test/services/bookings/blocking_bookings_test.rb`
 - Rôle: cœur de la logique métier de réservation (créneaux, verrouillage fonctionnel, expiration, confirmation, sanitation input, règles temporelles).
-- Couverture: **majoritairement métier**, avec une part technique (parse ENV rate-limit, overlaps SQL/scopes).
+- Couverture: **majoritairement métier**, avec une part technique (overlaps SQL/scopes).
 - Niveau de confiance: **élevé** sur le domaine booking; **moyen** sur concurrence réelle (lock PostgreSQL peu testé en condition concurrente).
 
 ### Contrôleurs
@@ -30,7 +29,6 @@
 ### Intégration
 - Fichiers:  
   `test/integration/booking_flow_test.rb`  
-  `test/integration/booking_rate_limit_test.rb`  
   `test/services/bookings/booking_duplicates_flow_test.rb` *(fichier en `services`, mais de type intégration via `ActionDispatch::IntegrationTest`)*
 - Rôle: valider les parcours utilisateur bout en bout.
 - Couverture: **métier transverse** (enchaînement réel des couches).
@@ -84,10 +82,6 @@ Le parcours utilisateur complet est couvert de bout en bout dans `test/integrati
   - `test/controllers/bookings_controller_test.rb` (**controller**)
   - `test/services/bookings/confirm_test.rb` (**service**)
 
-- **rate limit**
-  - `test/integration/booking_rate_limit_test.rb` (GET new et POST confirm) (**integration**)
-  - `test/services/bookings/rate_limit_test.rb` (parsing config) (**service**)
-
 - **doublons**
   - `test/services/bookings/booking_duplicates_flow_test.rb` (**integration**)  
     - refus de créneau déjà confirmé  
@@ -129,11 +123,6 @@ Le parcours utilisateur complet est couvert de bout en bout dans `test/integrati
   - Où: `input_test`, `public_clients_controller_test`, `bookings_controller_test`
   - Niveau: service + contrôleur
   - Confiance: **élevée**
-
-- **Rate limiting**
-  - Où: `booking_rate_limit_test`, `rate_limit_test`
-  - Niveau: intégration + service
-  - Confiance: **moyenne à élevée** (comportement HTTP validé, mais peu de tests bas niveau sur compteur TTL/concurrence).
 
 ---
 
@@ -177,8 +166,6 @@ Le parcours utilisateur complet est couvert de bout en bout dans `test/integrati
   - tests de concurrence multi-thread/process (race réelle sur `SlotLock`).
   - variations timezone/DST.
   - comportements sur durées de service différentes de 30 min.
-- Dépendances externes:
-  - pas de tests orientés adapter/cache-store spécifique pour rate-limit (Redis/MemCache vs fallback).
 - Scénarios utilisateur manquants:
   - multi-services complexes sur même client.
   - erreurs 404/invalid slug/service_id en profondeur de parcours.

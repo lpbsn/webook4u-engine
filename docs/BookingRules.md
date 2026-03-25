@@ -261,6 +261,34 @@
 
 ---
 
+## 8. Checklist de validation rapide
+
+Utiliser cette checklist pour vérifier rapidement que le moteur de réservation se comporte comme attendu après une modification.
+
+- La page publique d’un client connu s’affiche correctement.
+- Une enseigne active peut être sélectionnée.
+- Une prestation peut être sélectionnée.
+- Une date valide permet d’afficher des créneaux disponibles.
+- Un `start_time` invalide est refusé.
+- Un créneau hors grille est refusé.
+- Un booking `confirmed` existant bloque le créneau correspondant.
+- Un booking `pending` non expiré bloque le créneau correspondant.
+- Un booking `pending` expiré ne bloque plus le créneau.
+- La création d’un `pending` valide fonctionne.
+- Le `pending` créé reçoit bien une expiration.
+- Un `pending` expiré ne peut pas être confirmé.
+- Un `pending` valide peut être confirmé avec prénom, nom et email.
+- Une confirmation invalide re-render le formulaire avec erreurs.
+- Une confirmation réussie crée un `confirmation_token`.
+- La page de succès s’affiche après confirmation.
+- Deux bookings `confirmed` ne peuvent pas exister sur le même `booking_start_time` pour une même `enseigne`.
+- Un même `booking_start_time` reste possible pour une autre `enseigne`.
+- Un slot commençant exactement à la fin d’un autre booking reste autorisé.
+- Le moteur doit être lu comme une capacité implicite de `1 staff` par enseigne à ce stade.
+- Le moteur ne doit pas être interprété comme un flux de paiement actif.
+
+---
+
 ## 8. Proposition de documentation cible (structure idéale)
 
 - **1. Domain model (MVP)**  

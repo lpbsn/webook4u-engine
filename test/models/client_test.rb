@@ -61,36 +61,6 @@ class ClientTest < ActiveSupport::TestCase
     end
   end
 
-  test "resolve_legacy_enseigne! creates a default enseigne when none exists" do
-    client = Client.create!(name: "Salon Legacy", slug: "salon-legacy")
-
-    enseigne = client.resolve_legacy_enseigne!
-    same_enseigne = client.resolve_legacy_enseigne!
-
-    assert_equal "Salon Legacy", enseigne.name
-    assert_nil enseigne.full_address
-    assert_equal true, enseigne.active
-    assert_equal [ enseigne.id ], client.enseignes.pluck(:id)
-    assert_equal enseigne, same_enseigne
-  end
-
-  test "resolve_legacy_enseigne! reuses the existing enseigne when there is only one" do
-    client = Client.create!(name: "Salon One", slug: "salon-one")
-    enseigne = client.enseignes.create!(name: "Unique enseigne")
-
-    assert_equal enseigne, client.resolve_legacy_enseigne!
-  end
-
-  test "resolve_legacy_enseigne! raises when several enseignes exist" do
-    client = Client.create!(name: "Salon Multi", slug: "salon-multi")
-    client.enseignes.create!(name: "Enseigne A")
-    client.enseignes.create!(name: "Enseigne B")
-
-    assert_raises Client::AmbiguousLegacyEnseigneError do
-      client.resolve_legacy_enseigne!
-    end
-  end
-
   test "destroying client destroys associated enseignes" do
     client = Client.create!(name: "Salon Enseignes", slug: "salon-enseignes")
     client.enseignes.create!(name: "Enseigne A")

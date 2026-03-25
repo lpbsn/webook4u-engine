@@ -60,10 +60,6 @@ class Booking < ApplicationRecord
     BookingRules.booking_expired?(self)
   end
 
-  def confirmable?
-    pending? && !expired?
-  end
-
   def customer_full_name
     [ customer_first_name, customer_last_name ].compact.join(" ")
   end

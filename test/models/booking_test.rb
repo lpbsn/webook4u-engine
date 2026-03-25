@@ -318,54 +318,6 @@ class BookingTest < ActiveSupport::TestCase
     end
   end
 
-  test "confirmable? returns true for non expired pending booking" do
-    travel_to Time.zone.local(2026, 3, 15, 10, 0, 0) do
-      booking = Booking.new(
-        client: @client,
-        enseigne: @enseigne,
-        service: @service,
-        booking_start_time: Time.zone.local(2026, 3, 16, 10, 0, 0),
-        booking_end_time: Time.zone.local(2026, 3, 16, 10, 30, 0),
-        booking_status: :pending,
-        booking_expires_at: BookingRules.pending_expires_at
-      )
-
-      assert booking.confirmable?
-    end
-  end
-
-  test "confirmable? returns false for expired pending booking" do
-    travel_to Time.zone.local(2026, 3, 15, 10, 0, 0) do
-      booking = Booking.new(
-        client: @client,
-        enseigne: @enseigne,
-        service: @service,
-        booking_start_time: Time.zone.local(2026, 3, 16, 10, 0, 0),
-        booking_end_time: Time.zone.local(2026, 3, 16, 10, 30, 0),
-        booking_status: :pending,
-        booking_expires_at: 1.minute.ago
-      )
-
-      assert_not booking.confirmable?
-    end
-  end
-
-  test "confirmable? returns false for confirmed booking" do
-    booking = Booking.new(
-      client: @client,
-      enseigne: @enseigne,
-      service: @service,
-      booking_start_time: Time.zone.local(2026, 3, 16, 10, 0, 0),
-      booking_end_time: Time.zone.local(2026, 3, 16, 10, 30, 0),
-      booking_status: :confirmed,
-      customer_first_name: "Léonard",
-      customer_last_name: "Boisson",
-      customer_email: "leo@example.com"
-    )
-
-    assert_not booking.confirmable?
-  end
-
   test "customer_full_name returns concatenated first and last name" do
     booking = Booking.new(
       customer_first_name: "Léonard",

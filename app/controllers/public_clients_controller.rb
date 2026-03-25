@@ -2,14 +2,10 @@ class PublicClientsController < ApplicationController
   layout "booking"
   # =========================================================
   # PAGE PRINCIPALE DE RÉSERVATION
-  #
-  # Cette page permet de :
-  # 1️⃣ choisir une enseigne
-  # 2️⃣ choisir une prestation
-  # 3️⃣ choisir une date
-  # 4️⃣ afficher les créneaux disponibles
-  #
-  # Tout se passe sur UNE SEULE PAGE.
+  # 1️) choisir une enseigne
+  # 2️) choisir une prestation
+  # 3️) choisir une date
+  # 4️) afficher les créneaux disponibles
   # =========================================================
   def show
     page = Bookings::PublicPage.new(

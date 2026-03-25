@@ -108,5 +108,4 @@ class AddStatusBasedRequiredFieldChecksToBookings < ActiveRecord::Migration[8.1]
       break token unless Booking.exists?(pending_access_token: token)
     end
   end
-
 end

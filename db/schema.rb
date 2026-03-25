@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_03_25_113000) do
+ActiveRecord::Schema[8.1].define(version: 2026_03_25_123000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -38,6 +38,12 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_25_113000) do
     t.index ["pending_access_token"], name: "index_bookings_on_pending_access_token", unique: true
     t.index ["service_id"], name: "index_bookings_on_service_id"
     t.check_constraint "booking_end_time > booking_start_time", name: "bookings_end_time_after_start_time"
+    t.check_constraint "booking_status::text <> 'confirmed'::text OR NULLIF(btrim(confirmation_token::text), ''::text) IS NOT NULL", name: "bookings_confirmed_requires_confirmation_token"
+    t.check_constraint "booking_status::text <> 'confirmed'::text OR NULLIF(btrim(customer_email::text), ''::text) IS NOT NULL", name: "bookings_confirmed_requires_customer_email"
+    t.check_constraint "booking_status::text <> 'confirmed'::text OR NULLIF(btrim(customer_first_name::text), ''::text) IS NOT NULL", name: "bookings_confirmed_requires_customer_first_name"
+    t.check_constraint "booking_status::text <> 'confirmed'::text OR NULLIF(btrim(customer_last_name::text), ''::text) IS NOT NULL", name: "bookings_confirmed_requires_customer_last_name"
+    t.check_constraint "booking_status::text <> 'pending'::text OR NULLIF(btrim(pending_access_token::text), ''::text) IS NOT NULL", name: "bookings_pending_requires_pending_access_token"
+    t.check_constraint "booking_status::text <> 'pending'::text OR booking_expires_at IS NOT NULL", name: "bookings_pending_requires_booking_expires_at"
     t.check_constraint "booking_status::text = ANY (ARRAY['pending'::character varying, 'confirmed'::character varying, 'failed'::character varying]::text[])", name: "bookings_status_allowed_values"
   end
 

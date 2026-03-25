@@ -727,4 +727,390 @@ class BookingTest < ActiveSupport::TestCase
       )
     end
   end
+
+  test "database rejects pending booking without booking_expires_at" do
+    now = Time.current
+
+    error = assert_raises ActiveRecord::StatementInvalid do
+      Booking.insert_all!([
+        {
+          client_id: @client.id,
+          enseigne_id: @enseigne.id,
+          service_id: @service.id,
+          booking_start_time: now,
+          booking_end_time: now + 30.minutes,
+          booking_status: "pending",
+          pending_access_token: SecureRandom.urlsafe_base64(24),
+          created_at: now,
+          updated_at: now
+        }
+      ])
+    end
+
+    assert_includes error.message, "bookings_pending_requires_booking_expires_at"
+  end
+
+  test "database rejects pending booking without pending_access_token" do
+    now = Time.current
+
+    error = assert_raises ActiveRecord::StatementInvalid do
+      Booking.insert_all!([
+        {
+          client_id: @client.id,
+          enseigne_id: @enseigne.id,
+          service_id: @service.id,
+          booking_start_time: now,
+          booking_end_time: now + 30.minutes,
+          booking_status: "pending",
+          booking_expires_at: now + 5.minutes,
+          created_at: now,
+          updated_at: now
+        }
+      ])
+    end
+
+    assert_includes error.message, "bookings_pending_requires_pending_access_token"
+  end
+
+  test "database rejects pending booking with empty pending_access_token" do
+    now = Time.current
+
+    error = assert_raises ActiveRecord::StatementInvalid do
+      Booking.insert_all!([
+        {
+          client_id: @client.id,
+          enseigne_id: @enseigne.id,
+          service_id: @service.id,
+          booking_start_time: now,
+          booking_end_time: now + 30.minutes,
+          booking_status: "pending",
+          booking_expires_at: now + 5.minutes,
+          pending_access_token: "",
+          created_at: now,
+          updated_at: now
+        }
+      ])
+    end
+
+    assert_includes error.message, "bookings_pending_requires_pending_access_token"
+  end
+
+  test "database rejects pending booking with blank pending_access_token" do
+    now = Time.current
+
+    error = assert_raises ActiveRecord::StatementInvalid do
+      Booking.insert_all!([
+        {
+          client_id: @client.id,
+          enseigne_id: @enseigne.id,
+          service_id: @service.id,
+          booking_start_time: now,
+          booking_end_time: now + 30.minutes,
+          booking_status: "pending",
+          booking_expires_at: now + 5.minutes,
+          pending_access_token: "   ",
+          created_at: now,
+          updated_at: now
+        }
+      ])
+    end
+
+    assert_includes error.message, "bookings_pending_requires_pending_access_token"
+  end
+
+  test "database rejects confirmed booking without customer_first_name" do
+    now = Time.current
+
+    error = assert_raises ActiveRecord::StatementInvalid do
+      Booking.insert_all!([
+        {
+          client_id: @client.id,
+          enseigne_id: @enseigne.id,
+          service_id: @service.id,
+          booking_start_time: now,
+          booking_end_time: now + 30.minutes,
+          booking_status: "confirmed",
+          customer_last_name: "Dupont",
+          customer_email: "dupont@example.com",
+          confirmation_token: SecureRandom.uuid,
+          created_at: now,
+          updated_at: now
+        }
+      ])
+    end
+
+    assert_includes error.message, "bookings_confirmed_requires_customer_first_name"
+  end
+
+  test "database rejects confirmed booking with empty customer_first_name" do
+    now = Time.current
+
+    error = assert_raises ActiveRecord::StatementInvalid do
+      Booking.insert_all!([
+        {
+          client_id: @client.id,
+          enseigne_id: @enseigne.id,
+          service_id: @service.id,
+          booking_start_time: now,
+          booking_end_time: now + 30.minutes,
+          booking_status: "confirmed",
+          customer_first_name: "",
+          customer_last_name: "Dupont",
+          customer_email: "dupont@example.com",
+          confirmation_token: SecureRandom.uuid,
+          created_at: now,
+          updated_at: now
+        }
+      ])
+    end
+
+    assert_includes error.message, "bookings_confirmed_requires_customer_first_name"
+  end
+
+  test "database rejects confirmed booking with blank customer_first_name" do
+    now = Time.current
+
+    error = assert_raises ActiveRecord::StatementInvalid do
+      Booking.insert_all!([
+        {
+          client_id: @client.id,
+          enseigne_id: @enseigne.id,
+          service_id: @service.id,
+          booking_start_time: now,
+          booking_end_time: now + 30.minutes,
+          booking_status: "confirmed",
+          customer_first_name: "   ",
+          customer_last_name: "Dupont",
+          customer_email: "dupont@example.com",
+          confirmation_token: SecureRandom.uuid,
+          created_at: now,
+          updated_at: now
+        }
+      ])
+    end
+
+    assert_includes error.message, "bookings_confirmed_requires_customer_first_name"
+  end
+
+  test "database rejects confirmed booking without customer_last_name" do
+    now = Time.current
+
+    error = assert_raises ActiveRecord::StatementInvalid do
+      Booking.insert_all!([
+        {
+          client_id: @client.id,
+          enseigne_id: @enseigne.id,
+          service_id: @service.id,
+          booking_start_time: now,
+          booking_end_time: now + 30.minutes,
+          booking_status: "confirmed",
+          customer_first_name: "Jean",
+          customer_email: "dupont@example.com",
+          confirmation_token: SecureRandom.uuid,
+          created_at: now,
+          updated_at: now
+        }
+      ])
+    end
+
+    assert_includes error.message, "bookings_confirmed_requires_customer_last_name"
+  end
+
+  test "database rejects confirmed booking with empty customer_last_name" do
+    now = Time.current
+
+    error = assert_raises ActiveRecord::StatementInvalid do
+      Booking.insert_all!([
+        {
+          client_id: @client.id,
+          enseigne_id: @enseigne.id,
+          service_id: @service.id,
+          booking_start_time: now,
+          booking_end_time: now + 30.minutes,
+          booking_status: "confirmed",
+          customer_first_name: "Jean",
+          customer_last_name: "",
+          customer_email: "dupont@example.com",
+          confirmation_token: SecureRandom.uuid,
+          created_at: now,
+          updated_at: now
+        }
+      ])
+    end
+
+    assert_includes error.message, "bookings_confirmed_requires_customer_last_name"
+  end
+
+  test "database rejects confirmed booking with blank customer_last_name" do
+    now = Time.current
+
+    error = assert_raises ActiveRecord::StatementInvalid do
+      Booking.insert_all!([
+        {
+          client_id: @client.id,
+          enseigne_id: @enseigne.id,
+          service_id: @service.id,
+          booking_start_time: now,
+          booking_end_time: now + 30.minutes,
+          booking_status: "confirmed",
+          customer_first_name: "Jean",
+          customer_last_name: "   ",
+          customer_email: "dupont@example.com",
+          confirmation_token: SecureRandom.uuid,
+          created_at: now,
+          updated_at: now
+        }
+      ])
+    end
+
+    assert_includes error.message, "bookings_confirmed_requires_customer_last_name"
+  end
+
+  test "database rejects confirmed booking without customer_email" do
+    now = Time.current
+
+    error = assert_raises ActiveRecord::StatementInvalid do
+      Booking.insert_all!([
+        {
+          client_id: @client.id,
+          enseigne_id: @enseigne.id,
+          service_id: @service.id,
+          booking_start_time: now,
+          booking_end_time: now + 30.minutes,
+          booking_status: "confirmed",
+          customer_first_name: "Jean",
+          customer_last_name: "Dupont",
+          confirmation_token: SecureRandom.uuid,
+          created_at: now,
+          updated_at: now
+        }
+      ])
+    end
+
+    assert_includes error.message, "bookings_confirmed_requires_customer_email"
+  end
+
+  test "database rejects confirmed booking with empty customer_email" do
+    now = Time.current
+
+    error = assert_raises ActiveRecord::StatementInvalid do
+      Booking.insert_all!([
+        {
+          client_id: @client.id,
+          enseigne_id: @enseigne.id,
+          service_id: @service.id,
+          booking_start_time: now,
+          booking_end_time: now + 30.minutes,
+          booking_status: "confirmed",
+          customer_first_name: "Jean",
+          customer_last_name: "Dupont",
+          customer_email: "",
+          confirmation_token: SecureRandom.uuid,
+          created_at: now,
+          updated_at: now
+        }
+      ])
+    end
+
+    assert_includes error.message, "bookings_confirmed_requires_customer_email"
+  end
+
+  test "database rejects confirmed booking with blank customer_email" do
+    now = Time.current
+
+    error = assert_raises ActiveRecord::StatementInvalid do
+      Booking.insert_all!([
+        {
+          client_id: @client.id,
+          enseigne_id: @enseigne.id,
+          service_id: @service.id,
+          booking_start_time: now,
+          booking_end_time: now + 30.minutes,
+          booking_status: "confirmed",
+          customer_first_name: "Jean",
+          customer_last_name: "Dupont",
+          customer_email: "   ",
+          confirmation_token: SecureRandom.uuid,
+          created_at: now,
+          updated_at: now
+        }
+      ])
+    end
+
+    assert_includes error.message, "bookings_confirmed_requires_customer_email"
+  end
+
+  test "database rejects confirmed booking without confirmation_token" do
+    now = Time.current
+
+    error = assert_raises ActiveRecord::StatementInvalid do
+      Booking.insert_all!([
+        {
+          client_id: @client.id,
+          enseigne_id: @enseigne.id,
+          service_id: @service.id,
+          booking_start_time: now,
+          booking_end_time: now + 30.minutes,
+          booking_status: "confirmed",
+          customer_first_name: "Jean",
+          customer_last_name: "Dupont",
+          customer_email: "dupont@example.com",
+          created_at: now,
+          updated_at: now
+        }
+      ])
+    end
+
+    assert_includes error.message, "bookings_confirmed_requires_confirmation_token"
+  end
+
+  test "database rejects confirmed booking with empty confirmation_token" do
+    now = Time.current
+
+    error = assert_raises ActiveRecord::StatementInvalid do
+      Booking.insert_all!([
+        {
+          client_id: @client.id,
+          enseigne_id: @enseigne.id,
+          service_id: @service.id,
+          booking_start_time: now,
+          booking_end_time: now + 30.minutes,
+          booking_status: "confirmed",
+          customer_first_name: "Jean",
+          customer_last_name: "Dupont",
+          customer_email: "dupont@example.com",
+          confirmation_token: "",
+          created_at: now,
+          updated_at: now
+        }
+      ])
+    end
+
+    assert_includes error.message, "bookings_confirmed_requires_confirmation_token"
+  end
+
+  test "database rejects confirmed booking with blank confirmation_token" do
+    now = Time.current
+
+    error = assert_raises ActiveRecord::StatementInvalid do
+      Booking.insert_all!([
+        {
+          client_id: @client.id,
+          enseigne_id: @enseigne.id,
+          service_id: @service.id,
+          booking_start_time: now,
+          booking_end_time: now + 30.minutes,
+          booking_status: "confirmed",
+          customer_first_name: "Jean",
+          customer_last_name: "Dupont",
+          customer_email: "dupont@example.com",
+          confirmation_token: "   ",
+          created_at: now,
+          updated_at: now
+        }
+      ])
+    end
+
+    assert_includes error.message, "bookings_confirmed_requires_confirmation_token"
+  end
 end

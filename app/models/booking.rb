@@ -1,5 +1,6 @@
 class Booking < ApplicationRecord
   before_validation :ensure_pending_access_token
+  before_validation :ensure_confirmation_token
 
   # =========================================================
   # ASSOCIATIONS
@@ -33,6 +34,7 @@ class Booking < ApplicationRecord
   validates :customer_first_name, presence: true, if: :confirmed?
   validates :customer_last_name, presence: true, if: :confirmed?
   validates :customer_email, presence: true, if: :confirmed?
+  validates :confirmation_token, presence: true, uniqueness: true, if: :confirmed?
 
   validates :customer_email,
             format: { with: URI::MailTo::EMAIL_REGEXP },
@@ -96,10 +98,24 @@ class Booking < ApplicationRecord
     self.pending_access_token = generate_pending_access_token
   end
 
+  def ensure_confirmation_token
+    return unless confirmed?
+    return if confirmation_token.present?
+
+    self.confirmation_token = generate_confirmation_token
+  end
+
   def generate_pending_access_token
     loop do
       token = SecureRandom.urlsafe_base64(24)
       break token unless self.class.exists?(pending_access_token: token)
+    end
+  end
+
+  def generate_confirmation_token
+    loop do
+      token = SecureRandom.uuid
+      break token unless self.class.exists?(confirmation_token: token)
     end
   end
 end

@@ -51,6 +51,8 @@ Effet :
 - la fonction SQL et le trigger sont portes par `db/structure.sql`
 - cet invariant ne doit plus etre lu comme une simple validation applicative
 - il fait partie du socle structurel courant du projet
+- une future source CRM des disponibilites ne change pas cet invariant
+- tant que `Booking` reference `client`, `service` et `enseigne`, la coherence cross-table reste une regle forte du domaine
 
 ### References de validation
 

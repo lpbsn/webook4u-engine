@@ -23,17 +23,39 @@
   - `BookingsController#success` relit le booking par `confirmation_token`, scope au `client`.
   - le flux de reference est couvert par `test/integration/booking_flow_test.rb`.
 
+### Orchestration du controleur
+
+Le `BookingsController` reste un orchestrateur fin.
+
+Il s'appuie maintenant sur des contextes de chargement explicites pour :
+
+- charger le `client` public via `slug`
+- charger le contexte de creation `client + enseigne + service + start_time`
+- charger un booking public via token dans le scope du client
+
+La logique metier centrale reste deleguee aux services `Bookings::CreatePending` et `Bookings::Confirm`.
+
 ### Acteurs et objets principaux
 
 - `Client` :
+  - racine commerciale du tunnel public
   - porte le catalogue de `Service` et les `Enseigne`
   - la page publique est adressee par `slug`
 - `Enseigne` :
-  - porte le contexte principal de disponibilite, de concurrence et d'unicite de slot
+  - porte le contexte concret de reservation et de disponibilite
+  - porte aussi le contexte de concurrence et d'unicite de slot
 - `Service` :
   - definit la duree et le prix
+  - reste aujourd'hui partage au niveau du `Client`, pas de l'`Enseigne`
 - `Booking` :
+  - materialise une reservation dans le contexte `client + enseigne + service`
   - porte les temps `start/end/expires`, le statut, les informations client et le token de confirmation
+
+Note de domaine :
+
+- la disponibilite est aujourd'hui calculee en interne par Webook4u
+- une alimentation externe via CRM pourra exister plus tard selon le client
+- cette variation future ne change pas la structure actuelle du booking
 
 ## 3. Regles du flux
 

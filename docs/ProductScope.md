@@ -52,6 +52,7 @@ Le MVP repose actuellement sur les hypothèses suivantes :
 - les prestations sont partagées entre toutes les enseignes d’un même client
 - les horaires peuvent encore venir du niveau `client` comme fallback temporaire
 - la cible produit reste un modèle de disponibilité piloté par `enseigne`
+- la disponibilité est aujourd’hui calculée par Webook4u à partir des horaires et des réservations connues
 - chaque enseigne est aujourd’hui traitée comme si elle ne disposait que d’une seule capacité de réservation à un instant donné
 
 Ce dernier point est important :
@@ -148,8 +149,11 @@ Risque :
 
 Réalité actuelle :
 
+- aujourd’hui, Webook4u reste le mode actif de calcul de disponibilité
 - à terme, les créneaux pourront aussi être reçus directement depuis le CRM du client
+- certains clients pourront conserver le mode interne, d’autres imposer une source CRM
 - le moteur doit donc être pensé comme un système capable d’intégrer des disponibilités externes, et pas seulement de les générer en interne
+- cette future variation de source ne change pas l’invariant cross-table actuel de `Booking`
 
 ## Narration produit correcte
 
@@ -159,7 +163,10 @@ La bonne manière de décrire le produit aujourd’hui est :
 - le système maintient temporairement un créneau avant confirmation
 - une réservation peut être confirmée sans paiement
 - le prix affiché est actuellement informatif
+- les prestations restent aujourd’hui définies au niveau du client
+- l’enseigne porte le contexte concret de réservation et de disponibilité
 - les horaires au niveau `client` sont un fallback transitoire
+- la disponibilité est actuellement calculée en interne par Webook4u
 - la capacité actuelle est volontairement simplifiée à un staff implicite par enseigne
 - les disponibilités pourront plus tard venir aussi de systèmes externes comme les CRM clients
 

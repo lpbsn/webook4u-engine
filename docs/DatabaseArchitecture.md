@@ -51,6 +51,18 @@ Ce point est important : la base ne repose plus uniquement sur une representatio
 
 ## 2. Modele relationnel actuel
 
+### Decision de domaine actuelle
+
+Le modele metier courant est le suivant :
+
+- `Client` porte le catalogue de `Service`
+- `Enseigne` porte le contexte de reservation et de disponibilite
+- `Booking` reference explicitement `client`, `enseigne` et `service`
+- `Service` reste aujourd'hui partage a l'echelle du `Client`, pas de l'`Enseigne`
+
+Cette lecture est celle du domaine actif du repo aujourd'hui.
+Elle fixe le cadre MVP courant sans introduire de modele conceptuel plus large.
+
 ### Tables metier principales
 
 - `clients`
@@ -76,8 +88,23 @@ Ce point est important : la base ne repose plus uniquement sur une representatio
 
 - `Client` porte l'identite publique du tunnel via `slug`
 - `Service` porte le catalogue partage par client
-- `Enseigne` porte le contexte de disponibilite concret
-- `Booking` relie un client, une enseigne et un service pour materialiser une reservation
+- `Enseigne` porte le contexte de reservation et de disponibilite concret
+- `Booking` relie explicitement un client, une enseigne et un service pour materialiser une reservation
+
+### Source de disponibilite
+
+Mode actif aujourd'hui :
+
+- Webook4u calcule la disponibilite a partir des horaires et des bookings connus de l'application
+
+Mode futur possible :
+
+- certains clients pourront imposer leur CRM comme source de verite des disponibilites
+
+Decision importante :
+
+- cette variation future de source ne change pas l'invariant structurel actuel de `Booking`
+- tant qu'un booking reference `client`, `service` et `enseigne`, la coherence cross-table reste une regle forte du domaine
 
 ## 3. Detail des tables
 
@@ -158,7 +185,7 @@ Lecture metier :
 
 - un booking `pending` maintient temporairement un creneau
 - un booking `confirmed` represente une reservation confirmee
-- `failed` existe deja comme valeur de schema mais n'est pas encore exploite dans le flux MVP
+- `failed` existe deja comme valeur de schema mais n'est pas encore exploite dans le flux (en attente de stripe)
 
 ### `client_opening_hours`
 
@@ -310,8 +337,15 @@ Le moteur applicatif s'appuie ensuite sur ces donnees pour calculer les overlaps
 
 - les prestations sont partagees au niveau `client`
 - la disponibilite est principalement contextualisee au niveau `enseigne`
+- la disponibilite est calculee aujourd'hui par Webook4u a partir des horaires et des bookings connus
 - les horaires `client` servent encore de fallback
 - la capacite actuelle correspond implicitement a `1 staff` par enseigne a un instant donne
+
+### Variation future deja anticipee
+
+- certains clients pourront utiliser leur CRM comme source de verite des disponibilites
+- ce changement futur modifie la source des creneaux, pas la definition actuelle de `Booking`
+- il ne remet pas en cause l'invariant cross-table `Booking / Client / Service / Enseigne`
 
 ### Ce que la base ne modele pas encore
 

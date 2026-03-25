@@ -1,19 +1,15 @@
 class BookingsController < ApplicationController
   layout "booking"
-  before_action :load_pending_booking_context, only: %i[new create_pending]
+  before_action :load_client
+  before_action :load_creation_context, only: %i[new create_pending]
+  before_action :load_booking_by_pending_access_token, only: %i[create]
+  before_action :load_pending_booking_for_show, only: %i[show]
+  before_action :load_booking_by_confirmation_token, only: %i[success]
 
   def new
     return unless previewable_slot?
 
-    @booking_end_time = @booking_start_time + @service.duration_minutes.minutes
-    @booking = Booking.new(
-      client: @client,
-      enseigne: @enseigne,
-      service: @service,
-      booking_start_time: @booking_start_time,
-      booking_end_time: @booking_end_time,
-      booking_status: :pending
-    )
+    build_pending_booking_preview
   end
 
   def create_pending
@@ -33,11 +29,6 @@ class BookingsController < ApplicationController
   end
 
   def create
-    @client = Client.find_by!(slug: params[:slug])
-    @booking = @client.bookings.find_by!(pending_access_token: params[:token])
-    @service = @booking.service
-    @enseigne = @booking.enseigne
-
     result = Bookings::Confirm.new(
       booking: @booking,
       booking_params: booking_params
@@ -47,8 +38,7 @@ class BookingsController < ApplicationController
       redirect_to booking_success_path(@client.slug, @booking.confirmation_token)
     else
       if result.error_code == Bookings::Errors::FORM_INVALID
-        @booking_start_time = @booking.booking_start_time
-        @booking_end_time = @booking.booking_end_time
+        hydrate_booking_view_context
         flash.now[:alert] = result.error_message
         render :new, status: :unprocessable_entity
       else
@@ -64,31 +54,39 @@ class BookingsController < ApplicationController
   end
 
   def show
-    @client = Client.find_by!(slug: params[:slug])
-    @booking = @client.bookings.pending.find_by!(pending_access_token: params[:token])
-    @service = @booking.service
-    @enseigne = @booking.enseigne
-    @booking_start_time = @booking.booking_start_time
-    @booking_end_time = @booking.booking_end_time
-
+    hydrate_booking_view_context
     render :new
   end
 
   def success
-    @client = Client.find_by!(slug: params[:slug])
-    @booking = @client.bookings.find_by!(confirmation_token: params[:token])
-    @enseigne = @booking.enseigne
-    @service = @booking.service
   end
 
   private
 
-  def load_pending_booking_context
+  def load_client
     @client = Client.find_by!(slug: params[:slug])
+  end
+
+  def load_creation_context
     @enseigne = @client.enseignes.active.find(params[:enseigne_id])
     @service = @client.services.find(params[:service_id])
     @booking_start_time = Bookings::Input.safe_time(params[:start_time])
     @booking_date = redirect_date(@booking_start_time)
+  end
+
+  def load_booking_by_pending_access_token
+    @booking = @client.bookings.find_by!(pending_access_token: params[:token])
+    hydrate_booking_relations
+  end
+
+  def load_pending_booking_for_show
+    @booking = @client.bookings.pending.find_by!(pending_access_token: params[:token])
+    hydrate_booking_relations
+  end
+
+  def load_booking_by_confirmation_token
+    @booking = @client.bookings.find_by!(confirmation_token: params[:token])
+    hydrate_booking_relations
   end
 
   def booking_params
@@ -101,6 +99,29 @@ class BookingsController < ApplicationController
 
   def redirect_date(booking_start_time)
     Bookings::Input.safe_date(params[:date]) || booking_start_time&.to_date
+  end
+
+  def hydrate_booking_relations
+    @service = @booking.service
+    @enseigne = @booking.enseigne
+  end
+
+  def hydrate_booking_view_context
+    hydrate_booking_relations
+    @booking_start_time = @booking.booking_start_time
+    @booking_end_time = @booking.booking_end_time
+  end
+
+  def build_pending_booking_preview
+    @booking_end_time = @booking_start_time + @service.duration_minutes.minutes
+    @booking = Booking.new(
+      client: @client,
+      enseigne: @enseigne,
+      service: @service,
+      booking_start_time: @booking_start_time,
+      booking_end_time: @booking_end_time,
+      booking_status: :pending
+    )
   end
 
   def previewable_slot?

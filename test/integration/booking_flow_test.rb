@@ -41,7 +41,7 @@ class BookingFlowTest < ActionDispatch::IntegrationTest
 
       # 4. Vérification qu’un booking pending a été créé
       booking = Booking.last
-      assert_redirected_to pending_booking_path(@client.slug, booking)
+      assert_redirected_to pending_booking_path(@client.slug, booking.pending_access_token)
 
       follow_redirect!
       assert_response :success
@@ -54,7 +54,7 @@ class BookingFlowTest < ActionDispatch::IntegrationTest
       assert_equal slot, booking.booking_start_time
 
       # 5. Soumission valide via POST confirm
-      post confirm_booking_path(@client.slug, booking), params: {
+      post confirm_booking_path(@client.slug, booking.pending_access_token), params: {
         booking: {
           customer_first_name: "Léonard",
           customer_last_name: "Boisson",
@@ -105,12 +105,12 @@ class BookingFlowTest < ActionDispatch::IntegrationTest
       end
 
       booking = Booking.last
-      assert_redirected_to pending_booking_path(@client.slug, booking)
+      assert_redirected_to pending_booking_path(@client.slug, booking.pending_access_token)
       follow_redirect!
       assert_response :success
       assert_equal other_enseigne.id, booking.enseigne_id
 
-      post confirm_booking_path(@client.slug, booking), params: {
+      post confirm_booking_path(@client.slug, booking.pending_access_token), params: {
         booking: {
           customer_first_name: "Léonard",
           customer_last_name: "Boisson",

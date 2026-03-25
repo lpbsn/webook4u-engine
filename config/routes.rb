@@ -10,10 +10,10 @@ Rails.application.routes.draw do
   post "/:slug/services/:service_id/bookings", to: "bookings#create_pending", as: :service_bookings
 
   # affichage du formulaire pour un booking pending existant
-  get "/:slug/bookings/:id", to: "bookings#show", as: :pending_booking
+  get "/:slug/bookings/:token", to: "bookings#show", as: :pending_booking
 
   # confirmation du booking
-  post "/:slug/bookings/:id/confirm", to: "bookings#create", as: :confirm_booking
+  post "/:slug/bookings/:token/confirm", to: "bookings#create", as: :confirm_booking
 
   # page succès
   get "/:slug/bookings/:token/success", to: "bookings#success", as: :booking_success

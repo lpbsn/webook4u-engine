@@ -1,4 +1,6 @@
 class Booking < ApplicationRecord
+  before_validation :ensure_pending_access_token
+
   # =========================================================
   # ASSOCIATIONS
   # =========================================================
@@ -26,6 +28,7 @@ class Booking < ApplicationRecord
   # VALIDATIONS CONDITIONNELLES
   # =========================================================
   validates :booking_expires_at, presence: true, if: :pending?
+  validates :pending_access_token, presence: true, uniqueness: true, if: :pending?
 
   validates :customer_first_name, presence: true, if: :confirmed?
   validates :customer_last_name, presence: true, if: :confirmed?
@@ -84,5 +87,19 @@ class Booking < ApplicationRecord
     return if service.client_id == client_id
 
     errors.add(:service, "must belong to the same client")
+  end
+
+  def ensure_pending_access_token
+    return unless pending?
+    return if pending_access_token.present?
+
+    self.pending_access_token = generate_pending_access_token
+  end
+
+  def generate_pending_access_token
+    loop do
+      token = SecureRandom.urlsafe_base64(24)
+      break token unless self.class.exists?(pending_access_token: token)
+    end
   end
 end

@@ -105,7 +105,7 @@ class BookingDuplicatesFlowTest < ActionDispatch::IntegrationTest
       end
 
       booking = Booking.last
-      assert_redirected_to pending_booking_path(@client.slug, booking)
+      assert_redirected_to pending_booking_path(@client.slug, booking.pending_access_token)
       assert_equal "pending", booking.booking_status
       assert_equal slot, booking.booking_start_time
     end
@@ -139,7 +139,7 @@ class BookingDuplicatesFlowTest < ActionDispatch::IntegrationTest
         customer_email: "other@example.com"
       )
 
-      post confirm_booking_path(@client.slug, pending_booking), params: {
+      post confirm_booking_path(@client.slug, pending_booking.pending_access_token), params: {
         booking: {
           customer_first_name: "Leonard",
           customer_last_name: "Boisson",

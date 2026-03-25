@@ -143,7 +143,7 @@ class BookingsControllerTest < ActionDispatch::IntegrationTest
       end
 
       booking = Booking.last
-      assert_redirected_to pending_booking_path(@client.slug, booking)
+      assert_redirected_to pending_booking_path(@client.slug, booking.pending_access_token)
 
       follow_redirect!
       assert_response :success
@@ -170,7 +170,7 @@ class BookingsControllerTest < ActionDispatch::IntegrationTest
         booking_expires_at: BookingRules.pending_expires_at
       )
 
-      get pending_booking_path(@client.slug, booking)
+      get pending_booking_path(@client.slug, booking.pending_access_token)
 
       assert_response :success
       assert_includes response.body, @enseigne.name
@@ -283,7 +283,7 @@ class BookingsControllerTest < ActionDispatch::IntegrationTest
         booking_expires_at: BookingRules.pending_expires_at
       )
 
-      post confirm_booking_path(@client.slug, booking), params: {
+      post confirm_booking_path(@client.slug, booking.pending_access_token), params: {
         booking: {
           customer_first_name: "Léonard",
           customer_last_name: "Boisson",
@@ -311,7 +311,7 @@ class BookingsControllerTest < ActionDispatch::IntegrationTest
         booking_expires_at: BookingRules.pending_expires_at
       )
 
-      post confirm_booking_path(@client.slug, booking), params: {
+      post confirm_booking_path(@client.slug, booking.pending_access_token), params: {
         booking: {
           customer_first_name: "",
           customer_last_name: "",
@@ -338,7 +338,7 @@ class BookingsControllerTest < ActionDispatch::IntegrationTest
         booking_expires_at: 1.minute.ago
       )
 
-      post confirm_booking_path(@client.slug, booking), params: {
+      post confirm_booking_path(@client.slug, booking.pending_access_token), params: {
         booking: {
           customer_first_name: "Léonard",
           customer_last_name: "Boisson",
@@ -360,7 +360,7 @@ class BookingsControllerTest < ActionDispatch::IntegrationTest
     end
   end
 
-  test "POST #create redirects to client page with alert when booking is already confirmed" do
+  test "POST #create handles replay with confirmed booking via business error (NOT_PENDING)" do
     travel_to Time.zone.local(2026, 3, 15, 8, 0, 0) do
       booking = @client.bookings.create!(
         enseigne: @enseigne,
@@ -368,12 +368,13 @@ class BookingsControllerTest < ActionDispatch::IntegrationTest
         booking_start_time: Time.zone.local(2026, 3, 16, 13, 0, 0),
         booking_end_time: Time.zone.local(2026, 3, 16, 13, 30, 0),
         booking_status: :confirmed,
+        pending_access_token: SecureRandom.urlsafe_base64(24),
         customer_first_name: "Léonard",
         customer_last_name: "Boisson",
         customer_email: "leo@example.com"
       )
 
-      post confirm_booking_path(@client.slug, booking), params: {
+      post confirm_booking_path(@client.slug, booking.pending_access_token), params: {
         booking: {
           customer_first_name: "Test",
           customer_last_name: "User",
@@ -408,7 +409,7 @@ class BookingsControllerTest < ActionDispatch::IntegrationTest
       )
       @enseigne.update!(active: false)
 
-      post confirm_booking_path(@client.slug, booking), params: {
+      post confirm_booking_path(@client.slug, booking.pending_access_token), params: {
         booking: {
           customer_first_name: "Léonard",
           customer_last_name: "Boisson",
@@ -452,7 +453,7 @@ class BookingsControllerTest < ActionDispatch::IntegrationTest
         booking_expires_at: BookingRules.pending_expires_at
       )
 
-      post confirm_booking_path("slug-inconnu-xyz", booking), params: {
+      post confirm_booking_path("slug-inconnu-xyz", booking.pending_access_token), params: {
         booking: { customer_first_name: "A", customer_last_name: "B", customer_email: "a@b.com" }
       }
       assert_response :not_found
@@ -471,7 +472,7 @@ class BookingsControllerTest < ActionDispatch::IntegrationTest
         booking_expires_at: BookingRules.pending_expires_at
       )
 
-      post confirm_booking_path(other_client.slug, booking), params: {
+      post confirm_booking_path(other_client.slug, booking.pending_access_token), params: {
         booking: { customer_first_name: "A", customer_last_name: "B", customer_email: "a@b.com" }
       }
       assert_response :not_found
@@ -489,7 +490,7 @@ class BookingsControllerTest < ActionDispatch::IntegrationTest
         booking_expires_at: BookingRules.pending_expires_at
       )
 
-      get pending_booking_path("slug-inconnu-xyz", booking)
+      get pending_booking_path("slug-inconnu-xyz", booking.pending_access_token)
       assert_response :not_found
     end
   end
@@ -506,7 +507,7 @@ class BookingsControllerTest < ActionDispatch::IntegrationTest
         booking_expires_at: BookingRules.pending_expires_at
       )
 
-      get pending_booking_path(other_client.slug, booking)
+      get pending_booking_path(other_client.slug, booking.pending_access_token)
       assert_response :not_found
     end
   end
@@ -519,12 +520,29 @@ class BookingsControllerTest < ActionDispatch::IntegrationTest
         booking_start_time: Time.zone.local(2026, 3, 16, 11, 0, 0),
         booking_end_time: Time.zone.local(2026, 3, 16, 11, 30, 0),
         booking_status: :confirmed,
+        pending_access_token: SecureRandom.urlsafe_base64(24),
         customer_first_name: "Léonard",
         customer_last_name: "Boisson",
         customer_email: "leo@example.com"
       )
 
-      get pending_booking_path(@client.slug, booking)
+      get pending_booking_path(@client.slug, booking.pending_access_token)
+      assert_response :not_found
+    end
+  end
+
+  test "GET #show returns 404 for invalid token" do
+    travel_to Time.zone.local(2026, 3, 15, 8, 0, 0) do
+      get pending_booking_path(@client.slug, "token-invalide")
+      assert_response :not_found
+    end
+  end
+
+  test "POST #create returns 404 for invalid token" do
+    travel_to Time.zone.local(2026, 3, 15, 8, 0, 0) do
+      post confirm_booking_path(@client.slug, "token-invalide"), params: {
+        booking: { customer_first_name: "A", customer_last_name: "B", customer_email: "a@b.com" }
+      }
       assert_response :not_found
     end
   end

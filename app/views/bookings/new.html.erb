@@ -30,7 +30,7 @@
 <% end %>
 
 <% if @booking.persisted? %>
-  <%= form_with model: @booking, url: confirm_booking_path(@client.slug, @booking), method: :post do |form| %>
+  <%= form_with model: @booking, url: confirm_booking_path(@client.slug, @booking.pending_access_token), method: :post do |form| %>
     <div class="field">
       <label class="field-label" for="booking_customer_first_name">Prénom</label>
       <%= form.text_field :customer_first_name, required: true, class: "field-input" %>

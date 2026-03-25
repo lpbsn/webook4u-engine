@@ -29,12 +29,12 @@ class BookingsController < ApplicationController
       return
     end
 
-    redirect_to pending_booking_path(@client.slug, result.booking)
+    redirect_to pending_booking_path(@client.slug, result.booking.pending_access_token)
   end
 
   def create
     @client = Client.find_by!(slug: params[:slug])
-    @booking = @client.bookings.find(params[:id])
+    @booking = @client.bookings.find_by!(pending_access_token: params[:token])
     @service = @booking.service
     @enseigne = @booking.enseigne
 
@@ -65,7 +65,7 @@ class BookingsController < ApplicationController
 
   def show
     @client = Client.find_by!(slug: params[:slug])
-    @booking = @client.bookings.pending.find(params[:id])
+    @booking = @client.bookings.pending.find_by!(pending_access_token: params[:token])
     @service = @booking.service
     @enseigne = @booking.enseigne
     @booking_start_time = @booking.booking_start_time

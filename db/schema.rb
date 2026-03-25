@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_03_25_090000) do
+ActiveRecord::Schema[8.1].define(version: 2026_03_25_103000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -26,6 +26,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_25_090000) do
     t.string "customer_first_name"
     t.string "customer_last_name"
     t.bigint "enseigne_id", null: false
+    t.string "pending_access_token"
     t.bigint "service_id", null: false
     t.string "stripe_payment_intent"
     t.string "stripe_session_id"
@@ -34,6 +35,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_25_090000) do
     t.index ["confirmation_token"], name: "index_bookings_on_confirmation_token", unique: true
     t.index ["enseigne_id", "booking_start_time"], name: "index_bookings_on_enseigne_and_start_time_confirmed", unique: true, where: "((booking_status)::text = 'confirmed'::text)"
     t.index ["enseigne_id"], name: "index_bookings_on_enseigne_id"
+    t.index ["pending_access_token"], name: "index_bookings_on_pending_access_token", unique: true
     t.index ["service_id"], name: "index_bookings_on_service_id"
   end
 

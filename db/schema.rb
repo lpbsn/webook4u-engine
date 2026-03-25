@@ -10,15 +10,15 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_03_25_103000) do
+ActiveRecord::Schema[8.1].define(version: 2026_03_25_113000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
   create_table "bookings", force: :cascade do |t|
-    t.datetime "booking_end_time"
+    t.datetime "booking_end_time", null: false
     t.datetime "booking_expires_at"
-    t.datetime "booking_start_time"
-    t.string "booking_status"
+    t.datetime "booking_start_time", null: false
+    t.string "booking_status", null: false
     t.bigint "client_id", null: false
     t.string "confirmation_token"
     t.datetime "created_at", null: false
@@ -37,6 +37,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_25_103000) do
     t.index ["enseigne_id"], name: "index_bookings_on_enseigne_id"
     t.index ["pending_access_token"], name: "index_bookings_on_pending_access_token", unique: true
     t.index ["service_id"], name: "index_bookings_on_service_id"
+    t.check_constraint "booking_end_time > booking_start_time", name: "bookings_end_time_after_start_time"
+    t.check_constraint "booking_status::text = ANY (ARRAY['pending'::character varying, 'confirmed'::character varying, 'failed'::character varying]::text[])", name: "bookings_status_allowed_values"
   end
 
   create_table "client_opening_hours", force: :cascade do |t|

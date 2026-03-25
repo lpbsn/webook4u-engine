@@ -591,6 +591,115 @@ class BookingTest < ActiveSupport::TestCase
     end
   end
 
+  test "database enforces non null booking_start_time" do
+    now = Time.current
+
+    assert_raises ActiveRecord::NotNullViolation do
+      Booking.insert_all!([
+        {
+          client_id: @client.id,
+          enseigne_id: @enseigne.id,
+          service_id: @service.id,
+          booking_start_time: nil,
+          booking_end_time: now + 30.minutes,
+          booking_status: "confirmed",
+          created_at: now,
+          updated_at: now
+        }
+      ])
+    end
+  end
+
+  test "database enforces non null booking_end_time" do
+    now = Time.current
+
+    assert_raises ActiveRecord::NotNullViolation do
+      Booking.insert_all!([
+        {
+          client_id: @client.id,
+          enseigne_id: @enseigne.id,
+          service_id: @service.id,
+          booking_start_time: now,
+          booking_end_time: nil,
+          booking_status: "confirmed",
+          created_at: now,
+          updated_at: now
+        }
+      ])
+    end
+  end
+
+  test "database enforces non null booking_status" do
+    now = Time.current
+
+    assert_raises ActiveRecord::NotNullViolation do
+      Booking.insert_all!([
+        {
+          client_id: @client.id,
+          enseigne_id: @enseigne.id,
+          service_id: @service.id,
+          booking_start_time: now,
+          booking_end_time: now + 30.minutes,
+          booking_status: nil,
+          created_at: now,
+          updated_at: now
+        }
+      ])
+    end
+  end
+
+  test "database enforces allowed booking_status values" do
+    now = Time.current
+
+    assert_raises ActiveRecord::StatementInvalid do
+      Booking.insert_all!([
+        {
+          client_id: @client.id,
+          enseigne_id: @enseigne.id,
+          service_id: @service.id,
+          booking_start_time: now,
+          booking_end_time: now + 30.minutes,
+          booking_status: "archived",
+          created_at: now,
+          updated_at: now
+        }
+      ])
+    end
+  end
+
+  test "database enforces booking_end_time after booking_start_time" do
+    now = Time.current
+
+    assert_raises ActiveRecord::StatementInvalid do
+      Booking.insert_all!([
+        {
+          client_id: @client.id,
+          enseigne_id: @enseigne.id,
+          service_id: @service.id,
+          booking_start_time: now,
+          booking_end_time: now,
+          booking_status: "confirmed",
+          created_at: now,
+          updated_at: now
+        }
+      ])
+    end
+    assert_raises ActiveRecord::StatementInvalid do
+      Booking.insert_all!([
+        {
+          client_id: @client.id,
+          enseigne_id: @enseigne.id,
+          service_id: @service.id,
+          booking_start_time: now,
+          booking_end_time: now - 30.minutes,
+          booking_status: "confirmed",
+          created_at: now,
+          updated_at: now
+        }
+      ])
+    end
+  end
+
   test "database allows same confirmed slot in two enseignes of the same client" do
     slot = Time.zone.local(2026, 3, 16, 17, 0, 0)
 

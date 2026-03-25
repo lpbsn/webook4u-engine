@@ -1,6 +1,6 @@
 # Webook4u
 
-Moteur de reservation Ruby on Rails en cours de construction, oriente MVP.
+Moteur de reservation Ruby on Rails en cours de construction.
 
 ## Versions figees
 
@@ -16,6 +16,18 @@ ruby -v
 bundle -v
 psql --version
 ```
+
+## Documentation
+
+- [README.md](/Users/leobsn/Desktop/webook4u-engine/README.md) : point d'entree setup, base locale, tests et perimetre courant
+- [docs/BookingRules.md](/Users/leobsn/Desktop/webook4u-engine/docs/BookingRules.md) : point d'entree technique vers la documentation de reservation
+- [docs/BookingFlow.md](/Users/leobsn/Desktop/webook4u-engine/docs/BookingFlow.md) : reference du flux de reservation et du cycle de vie courant
+- [docs/BookingInvariants.md](/Users/leobsn/Desktop/webook4u-engine/docs/BookingInvariants.md) : reference des invariants de domaine, DB et concurrence
+- [docs/DatabaseArchitecture.md](/Users/leobsn/Desktop/webook4u-engine/docs/DatabaseArchitecture.md) : architecture de la base, tables, relations et garde-fous PostgreSQL
+- [docs/ProductScope.md](/Users/leobsn/Desktop/webook4u-engine/docs/ProductScope.md) : cadrage produit/strategie en anglais
+- [docs/ProductScope.fr.md](/Users/leobsn/Desktop/webook4u-engine/docs/ProductScope.fr.md) : cadrage produit/strategie en francais
+- [docs/FutureInvariantsChecklist.md](/Users/leobsn/Desktop/webook4u-engine/docs/FutureInvariantsChecklist.md) : checklist des invariants a revisiter lors des futures evolutions
+- [docs/BookingCrossTableAudit.md](/Users/leobsn/Desktop/webook4u-engine/docs/BookingCrossTableAudit.md) : audit historique de coherence cross-table avant ajout du trigger DB
 
 ## Bootstrap local
 
@@ -58,7 +70,17 @@ Par defaut, `config/database.yml` utilise PostgreSQL local avec l'utilisateur sy
 
 PostgreSQL doit donc etre demarre et accessible en local, sauf configuration specifique via `DATABASE_URL`.
 
+Le projet utilise `db/structure.sql` pour porter certains invariants PostgreSQL avancés qui ne tiennent pas correctement dans `schema.rb`, notamment le trigger de coherence cross-table sur `bookings`.
+
 ## Tests
+
+Avant de lancer les tests, preparer la base avec le workflow standard du projet :
+
+```bash
+bin/rails db:prepare
+```
+
+La base de test est preparee avec le meme schema SQL PostgreSQL que le projet, y compris les invariants avances portes par `db/structure.sql`.
 
 Commande de reference :
 

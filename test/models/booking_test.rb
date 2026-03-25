@@ -1113,4 +1113,157 @@ class BookingTest < ActiveSupport::TestCase
 
     assert_includes error.message, "bookings_confirmed_requires_confirmation_token"
   end
+
+  test "database accepts insert for cross-table coherent booking" do
+    now = Time.current
+
+    assert_difference "Booking.count", 1 do
+      Booking.insert_all!([
+        {
+          client_id: @client.id,
+          enseigne_id: @enseigne.id,
+          service_id: @service.id,
+          booking_start_time: now,
+          booking_end_time: now + 30.minutes,
+          booking_status: "pending",
+          booking_expires_at: now + 5.minutes,
+          pending_access_token: SecureRandom.urlsafe_base64(24),
+          created_at: now,
+          updated_at: now
+        }
+      ])
+    end
+  end
+
+  test "database rejects insert when service belongs to another client" do
+    now = Time.current
+    other_client = Client.create!(name: "Other client", slug: "other-client-cross-table-service")
+    other_service = other_client.services.create!(name: "Other service", duration_minutes: 30, price_cents: 1200)
+
+    error = assert_raises ActiveRecord::StatementInvalid do
+      Booking.insert_all!([
+        {
+          client_id: @client.id,
+          enseigne_id: @enseigne.id,
+          service_id: other_service.id,
+          booking_start_time: now,
+          booking_end_time: now + 30.minutes,
+          booking_status: "pending",
+          booking_expires_at: now + 5.minutes,
+          pending_access_token: SecureRandom.urlsafe_base64(24),
+          created_at: now,
+          updated_at: now
+        }
+      ])
+    end
+
+    assert_includes error.message, "bookings.client_id must match services.client_id"
+  end
+
+  test "database rejects insert when enseigne belongs to another client" do
+    now = Time.current
+    other_client = Client.create!(name: "Other client", slug: "other-client-cross-table-enseigne")
+    other_enseigne = other_client.enseignes.create!(name: "Other enseigne", full_address: "2 rue du test")
+
+    error = assert_raises ActiveRecord::StatementInvalid do
+      Booking.insert_all!([
+        {
+          client_id: @client.id,
+          enseigne_id: other_enseigne.id,
+          service_id: @service.id,
+          booking_start_time: now,
+          booking_end_time: now + 30.minutes,
+          booking_status: "pending",
+          booking_expires_at: now + 5.minutes,
+          pending_access_token: SecureRandom.urlsafe_base64(24),
+          created_at: now,
+          updated_at: now
+        }
+      ])
+    end
+
+    assert_includes error.message, "bookings.client_id must match enseignes.client_id"
+  end
+
+  test "database rejects insert when service and enseigne match each other but not client_id" do
+    now = Time.current
+    other_client = Client.create!(name: "Other client", slug: "other-client-cross-table-both")
+    other_service = other_client.services.create!(name: "Other service", duration_minutes: 30, price_cents: 1200)
+    other_enseigne = other_client.enseignes.create!(name: "Other enseigne", full_address: "3 rue du test")
+
+    error = assert_raises ActiveRecord::StatementInvalid do
+      Booking.insert_all!([
+        {
+          client_id: @client.id,
+          enseigne_id: other_enseigne.id,
+          service_id: other_service.id,
+          booking_start_time: now,
+          booking_end_time: now + 30.minutes,
+          booking_status: "pending",
+          booking_expires_at: now + 5.minutes,
+          pending_access_token: SecureRandom.urlsafe_base64(24),
+          created_at: now,
+          updated_at: now
+        }
+      ])
+    end
+
+    assert_includes error.message, "bookings.client_id must match services.client_id"
+  end
+
+  test "database rejects update when service_id is changed to another client service" do
+    booking = @client.bookings.create!(
+      enseigne: @enseigne,
+      service: @service,
+      booking_start_time: Time.zone.local(2026, 3, 16, 18, 0, 0),
+      booking_end_time: Time.zone.local(2026, 3, 16, 18, 30, 0),
+      booking_status: :pending,
+      booking_expires_at: BookingRules.pending_expires_at
+    )
+    other_client = Client.create!(name: "Other client", slug: "other-client-update-service")
+    other_service = other_client.services.create!(name: "Other service", duration_minutes: 30, price_cents: 1200)
+
+    error = assert_raises ActiveRecord::StatementInvalid do
+      Booking.where(id: booking.id).update_all(service_id: other_service.id)
+    end
+
+    assert_includes error.message, "bookings.client_id must match services.client_id"
+  end
+
+  test "database rejects update when enseigne_id is changed to another client enseigne" do
+    booking = @client.bookings.create!(
+      enseigne: @enseigne,
+      service: @service,
+      booking_start_time: Time.zone.local(2026, 3, 16, 19, 0, 0),
+      booking_end_time: Time.zone.local(2026, 3, 16, 19, 30, 0),
+      booking_status: :pending,
+      booking_expires_at: BookingRules.pending_expires_at
+    )
+    other_client = Client.create!(name: "Other client", slug: "other-client-update-enseigne")
+    other_enseigne = other_client.enseignes.create!(name: "Other enseigne", full_address: "4 rue du test")
+
+    error = assert_raises ActiveRecord::StatementInvalid do
+      Booking.where(id: booking.id).update_all(enseigne_id: other_enseigne.id)
+    end
+
+    assert_includes error.message, "bookings.client_id must match enseignes.client_id"
+  end
+
+  test "database rejects update when client_id is changed alone and breaks cross-table consistency" do
+    booking = @client.bookings.create!(
+      enseigne: @enseigne,
+      service: @service,
+      booking_start_time: Time.zone.local(2026, 3, 16, 20, 0, 0),
+      booking_end_time: Time.zone.local(2026, 3, 16, 20, 30, 0),
+      booking_status: :pending,
+      booking_expires_at: BookingRules.pending_expires_at
+    )
+    other_client = Client.create!(name: "Other client", slug: "other-client-update-client-id")
+
+    error = assert_raises ActiveRecord::StatementInvalid do
+      Booking.where(id: booking.id).update_all(client_id: other_client.id)
+    end
+
+    assert_includes error.message, "bookings.client_id must match services.client_id"
+  end
 end

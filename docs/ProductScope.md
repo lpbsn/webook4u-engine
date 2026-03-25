@@ -1,207 +1,206 @@
-# Product Scope
+# Perimetre Produit
 
-## Purpose
+## Objectif
 
-This document defines the current product scope of Webook4u from a product and strategy perspective.
+Ce document définit le périmètre produit actuel de Webook4u avec une lecture produit et stratégique.
 
-Its role is to keep the MVP clearly framed, avoid false product signals, and make sure the team aligns on what the product is today, what it is not yet, and what it is preparing to become.
+Son rôle est de garder un cadre clair sur le MVP, d’éviter les faux signaux produit, et d’aligner l’équipe sur ce que le produit est aujourd’hui, ce qu’il n’est pas encore, et ce qu’il prépare pour la suite.
 
-## Product Intent
+## Intention produit
 
-Webook4u is currently positioned as a simple public booking engine designed to deliver a usable MVP quickly.
+Webook4u est aujourd’hui un moteur de réservation public simple, conçu pour sortir un MVP utile rapidement.
 
-The current objective is not to build a complete booking platform.
-The current objective is to make reservation selection, slot locking, and confirmation reliable enough to support iteration without creating a fragile base.
+L’objectif actuel n’est pas de construire une plateforme complète de réservation.
+L’objectif actuel est de rendre fiable la sélection, le blocage temporaire et la confirmation d’un créneau, afin de pouvoir itérer vite sans construire une base fragile.
 
-In its current form, the product is meant to solve one thing well:
+Dans son état actuel, le produit doit surtout bien faire une chose :
 
-- let an end user book a slot through a short, understandable public flow
+- permettre à un utilisateur final de réserver un créneau via un tunnel public court et compréhensible
 
-## Current MVP Promise
+## Promesse MVP actuelle
 
-Today, the product promise is:
+Aujourd’hui, la promesse produit est la suivante :
 
-- choose a location
-- choose a service
-- choose a date
-- choose an available slot
-- confirm the booking
+- choisir un lieu
+- choisir une prestation
+- choisir une date
+- choisir un créneau disponible
+- confirmer une réservation
 
-This is a reservation MVP.
-It is not yet a payment MVP.
-It is not yet an operations MVP.
-It is not yet a staff scheduling MVP.
+Il s’agit d’un MVP de réservation.
+Ce n’est pas encore un MVP de paiement.
+Ce n’est pas encore un MVP d’opérations.
+Ce n’est pas encore un MVP de gestion de planning staff.
 
-## What the Product Actually Supports Today
+## Ce que le produit supporte réellement aujourd’hui
 
-The current product supports:
+Le produit supporte actuellement :
 
-- a public booking page accessible through a client `slug`
-- location selection
-- service selection
-- date selection
-- available slot display
-- temporary slot holding through a `pending` booking
-- booking confirmation with first name, last name, and email
-- a success page after confirmation
+- une page publique accessible via un `slug` client
+- la sélection d’une enseigne
+- la sélection d’une prestation
+- la sélection d’une date
+- l’affichage des créneaux disponibles
+- le blocage temporaire d’un créneau via une réservation `pending`
+- la confirmation d’une réservation avec prénom, nom et email
+- une page de succès après confirmation
 
-## Strategic Assumptions of the Current MVP
+## Hypothèses stratégiques du MVP actuel
 
-The MVP currently assumes:
+Le MVP repose actuellement sur les hypothèses suivantes :
 
-- services are shared across all locations of the same client
-- opening hours may still come from the client level as a temporary fallback
-- the target model is still to move toward location-based availability rules
-- each location is currently treated as if it had a single booking capacity at a given moment
+- les prestations sont partagées entre toutes les enseignes d’un même client
+- les horaires peuvent encore venir du niveau `client` comme fallback temporaire
+- la cible produit reste un modèle de disponibilité piloté par `enseigne`
+- chaque enseigne est aujourd’hui traitée comme si elle ne disposait que d’une seule capacité de réservation à un instant donné
 
-This last point matters:
+Ce dernier point est important :
 
-- one slot currently represents one available capacity per location
-- the system does not yet model multiple staff members on the same slot
+- un créneau correspond actuellement à une seule capacité disponible par enseigne
+- le système ne modélise pas encore plusieurs membres du staff disponibles sur le même créneau
 
-This is an intentional simplification for the MVP, not the intended long-term product model.
+Cette simplification est volontaire pour le MVP.
+Elle n’est pas le modèle cible du produit.
 
-## What the Product Does Not Promise Yet
+## Ce que le produit ne promet pas encore
 
-The product does not currently promise:
+Le produit ne promet pas encore :
 
-- online payment
-- payment validation before booking confirmation
-- payment failure management
-- use of the `failed` booking state in the user flow
-- cancellation
-- rescheduling
-- customer account management
-- operational back-office workflows
-- multi-staff capacity on the same slot
-- CRM-driven slot ingestion
+- le paiement en ligne
+- une validation du paiement avant confirmation de réservation
+- la gestion des échecs de paiement
+- l’usage du statut `failed` dans le flux utilisateur
+- l’annulation
+- la replanification
+- un espace client
+- des workflows de back-office opérationnel
+- la gestion de plusieurs staffs disponibles sur un même créneau
+- l’ingestion de créneaux directement depuis le CRM du client
 
-These are future evolution areas, not current product commitments.
+Ces sujets appartiennent à la suite du produit, pas au périmètre actif du MVP.
 
-## Main Product Risks of Misinterpretation
+## Principaux risques de mauvaise interprétation produit
 
-### Price display can be mistaken for payment
+### L’affichage du prix peut faire croire à un paiement
 
-The interface currently shows a price and uses wording equivalent to "amount to pay".
+L’interface affiche aujourd’hui un prix et un wording proche de `Montant à payer`.
 
-Risk:
+Risque :
 
-- stakeholders may think the MVP already includes payment
-- users may assume the booking is tied to an online checkout flow
-- future discussions may be biased by an incorrect understanding of what is already delivered
+- des parties prenantes peuvent croire que le MVP inclut déjà le paiement
+- des utilisateurs peuvent comprendre que la réservation dépend d’un checkout en ligne
+- les discussions produit peuvent partir d’une perception trop avancée de ce qui est réellement livré
 
-Current reality:
+Réalité actuelle :
 
-- the price is informational only
-- confirmation is a booking confirmation, not a payment confirmation
+- le prix est uniquement informatif
+- la confirmation actuelle est une confirmation de réservation, pas une confirmation de paiement
 
-### Stripe-related fields can be mistaken for active payment scope
+### La présence de champs Stripe peut faire croire à un scope paiement actif
 
-The data model already contains Stripe-related fields.
+Le modèle de données contient déjà des champs liés à Stripe.
 
-Risk:
+Risque :
 
-- people may think Stripe is already integrated into the product flow
-- the roadmap may appear more advanced than it really is
+- l’équipe peut croire que Stripe fait déjà partie du flux produit
+- la roadmap peut paraître plus avancée qu’elle ne l’est réellement
 
-Current reality:
+Réalité actuelle :
 
-- these fields are placeholders for a later payment phase
-- they are not part of the active MVP flow
+- ces champs sont des réserves pour une phase ultérieure
+- ils ne participent pas au flux actif du MVP
 
-### The `failed` state can be mistaken for an active lifecycle
+### Le statut `failed` peut faire croire à un cycle de vie déjà complet
 
-The booking model already exposes a `failed` state.
+Le modèle de réservation expose déjà un état `failed`.
 
-Risk:
+Risque :
 
-- the team may start reasoning as if payment failures or booking failures are already productized
+- l’équipe peut commencer à raisonner comme si les échecs de paiement ou de réservation étaient déjà intégrés au produit
 
-Current reality:
+Réalité actuelle :
 
-- the active MVP lifecycle is effectively based on `pending` and `confirmed`
-- `failed` belongs to a later stage of the product
+- le cycle de vie actif du MVP repose en pratique sur `pending` et `confirmed`
+- `failed` appartient à une étape produit ultérieure
 
-### Current capacity can be mistaken for the target operating model
+### La capacité actuelle peut être prise pour le modèle cible
 
-The current slot engine behaves as if one location equals one available staff capacity at a time.
+Le moteur actuel se comporte comme si une enseigne ne pouvait absorber qu’une seule réservation à la fois sur un créneau donné.
 
-Risk:
+Risque :
 
-- the current implementation may be mistaken for the target business model
-- decisions may be taken as if slot uniqueness per location were a permanent rule
+- l’implémentation actuelle peut être prise pour le vrai modèle métier cible
+- certaines décisions peuvent être prises comme si l’unicité d’un créneau par enseigne était une règle définitive
 
-Current reality:
+Réalité actuelle :
 
-- this is only a simplification used to get the reservation engine stable
-- the long-term model must support multiple available staff members on the same slot
-- a single time slot may eventually need to appear more than once when multiple staff are available
+- c’est une simplification pour stabiliser le moteur de réservation
+- à terme, le produit devra intégrer la notion de staff disponible
+- un même créneau pourra exister plusieurs fois si plusieurs staffs sont disponibles dans la même enseigne
 
-### Internal slot calculation can be mistaken for the permanent availability source
+### Le calcul interne des créneaux peut être pris pour la source définitive des disponibilités
 
-Today, slot availability is derived internally from opening hours and bookings.
+Aujourd’hui, les créneaux sont calculés en interne à partir des horaires et des réservations connues de l’application.
 
-Risk:
+Risque :
 
-- the team may overfit the architecture to an internal-only slot generation model
+- l’équipe peut sur-adapter l’architecture à un modèle où l’application reste l’unique source de vérité des disponibilités
 
-Current reality:
+Réalité actuelle :
 
-- in the future, slot availability may also be received directly from the client CRM
-- the engine should therefore be thought of as evolving toward a model that can consume external availability, not only generate it internally
+- à terme, les créneaux pourront aussi être reçus directement depuis le CRM du client
+- le moteur doit donc être pensé comme un système capable d’intégrer des disponibilités externes, et pas seulement de les générer en interne
 
-## Correct Product Narrative
+## Narration produit correcte
 
-The correct way to describe the product today is:
+La bonne manière de décrire le produit aujourd’hui est :
 
-- Webook4u is a public booking engine
-- the system temporarily holds a slot before confirmation
-- a booking can be confirmed without payment
-- displayed pricing is currently informational
-- client-level opening hours are a transitional fallback
-- current slot capacity is intentionally simplified to one implicit staff per location
-- future availability may come from external client systems such as CRMs
+- Webook4u est un moteur de réservation public
+- le système maintient temporairement un créneau avant confirmation
+- une réservation peut être confirmée sans paiement
+- le prix affiché est actuellement informatif
+- les horaires au niveau `client` sont un fallback transitoire
+- la capacité actuelle est volontairement simplifiée à un staff implicite par enseigne
+- les disponibilités pourront plus tard venir aussi de systèmes externes comme les CRM clients
 
-## Strategic Direction
+## Direction stratégique
 
-The next meaningful product step is not a large redesign.
-The right direction is to harden the current reservation core while keeping the future model open.
+Le prochain palier produit utile n’est pas une grande refonte.
+La bonne direction est de solidifier le cœur de réservation actuel tout en gardant le modèle futur ouvert.
 
-The strategy should be:
+La stratégie doit être :
 
-- make the current booking engine stable and maintainable
-- reduce false product signals in wording and product communication
-- clarify the real MVP promise everywhere
-- keep the domain ready for staff capacity
-- keep the domain ready for external availability sources
-- only then add payment
+- fiabiliser le moteur actuel de réservation
+- réduire les faux signaux dans le wording et la communication produit
+- clarifier partout la promesse réelle du MVP
+- garder le domaine prêt pour la future notion de capacité / staff
+- garder le domaine prêt pour l’intégration future de disponibilités externes
+- n’ajouter le paiement qu’après cette stabilisation
 
-## Product Evolution Path
+## Trajectoire d’évolution produit
 
-The likely evolution path is:
+La trajectoire la plus logique est :
 
-1. stabilize public booking and confirmation
-2. remove ambiguity in product wording
-3. clarify the domain around locations and availability
-4. prepare for multi-staff capacity
-5. prepare for CRM-driven slot ingestion
-6. add payment and related failure states
+1. stabiliser le flux public de réservation et de confirmation
+2. supprimer les ambiguïtés de wording produit
+3. clarifier le domaine autour des enseignes et de la disponibilité
+4. préparer la prise en compte de capacités multiples / multi-staff
+5. préparer l’ingestion de créneaux depuis les CRM clients
+6. ajouter le paiement et les états d’échec associés
 
-## Summary
+## Résumé
 
-Webook4u today is a booking MVP with a narrow and deliberate promise:
+Webook4u est aujourd’hui un MVP de réservation avec une promesse volontairement étroite :
 
-- find a slot
-- hold it briefly
-- confirm the booking
+- trouver un créneau
+- le maintenir brièvement
+- confirmer une réservation
 
-The current product is intentionally simpler than the target model.
+Le produit actuel est volontairement plus simple que le modèle cible.
 
-It does not yet cover:
+Il ne couvre pas encore :
 
-- payment
-- complex booking lifecycle management
-- multi-staff capacity
-- CRM-native availability ingestion
-
-That is acceptable, as long as this simplified MVP is described honestly and does not pretend to solve the next product stage before it actually does.
+- le paiement
+- un cycle de vie métier complet de réservation
+- les capacités multi-staff
+- l’ingestion native des disponibilités depuis le CRM client

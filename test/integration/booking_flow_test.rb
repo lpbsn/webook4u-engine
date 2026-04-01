@@ -126,4 +126,109 @@ class BookingFlowTest < ActionDispatch::IntegrationTest
       assert_includes response.body, other_enseigne.full_address
     end
   end
+
+  test "public flow redirects back to the selected page with slot not bookable alert" do
+    travel_to Time.zone.local(2026, 3, 15, 8, 0, 0) do
+      date_param = "2026-03-16"
+      slot_not_in_schedule_grid = Time.zone.local(2026, 3, 16, 8, 0, 0)
+
+      assert_no_difference "Booking.count" do
+        post service_bookings_path(@client.slug, @service),
+             params: { start_time: slot_not_in_schedule_grid, enseigne_id: @enseigne.id, date: date_param }
+      end
+
+      assert_redirected_to public_client_path(
+        @client.slug,
+        enseigne_id: @enseigne.id,
+        service_id: @service.id,
+        date: Date.new(2026, 3, 16)
+      )
+
+      follow_redirect!
+      assert_response :success
+      assert_equal Bookings::Errors.message_for(Bookings::Errors::SLOT_NOT_BOOKABLE), flash[:alert]
+      assert_includes response.body, @enseigne.name
+      assert_includes response.body, @service.name
+    end
+  end
+
+  test "public flow redirects back with slot unavailable alert when confirmation is blocked" do
+    travel_to Time.zone.local(2026, 3, 15, 8, 0, 0) do
+      date_param = "2026-03-16"
+      slot = Time.zone.local(2026, 3, 16, 10, 0, 0)
+
+      post service_bookings_path(@client.slug, @service),
+           params: { start_time: slot, enseigne_id: @enseigne.id, date: date_param }
+
+      booking = Booking.last
+
+      @client.bookings.create!(
+        enseigne: @enseigne,
+        service: @service,
+        booking_start_time: slot,
+        booking_end_time: slot + 30.minutes,
+        booking_status: :confirmed,
+        customer_first_name: "Other",
+        customer_last_name: "User",
+        customer_email: "other@example.com"
+      )
+
+      post confirm_booking_path(@client.slug, booking.pending_access_token), params: {
+        booking: {
+          customer_first_name: "Léonard",
+          customer_last_name: "Boisson",
+          customer_email: "leo@example.com"
+        }
+      }
+
+      assert_redirected_to public_client_path(
+        @client.slug,
+        enseigne_id: @enseigne.id,
+        service_id: @service.id,
+        date: Date.new(2026, 3, 16)
+      )
+
+      follow_redirect!
+      assert_response :success
+      assert_equal Bookings::Errors.message_for(Bookings::Errors::SLOT_UNAVAILABLE), flash[:alert]
+
+      booking.reload
+      assert_equal "pending", booking.booking_status
+    end
+  end
+
+  test "public flow redirects back with session expired alert when pending expires before confirmation" do
+    travel_to Time.zone.local(2026, 3, 15, 8, 0, 0) do
+      date_param = "2026-03-16"
+      slot = Time.zone.local(2026, 3, 16, 11, 0, 0)
+
+      post service_bookings_path(@client.slug, @service),
+           params: { start_time: slot, enseigne_id: @enseigne.id, date: date_param }
+
+      booking = Booking.last
+      booking.update!(booking_expires_at: 1.minute.ago)
+
+      post confirm_booking_path(@client.slug, booking.pending_access_token), params: {
+        booking: {
+          customer_first_name: "Léonard",
+          customer_last_name: "Boisson",
+          customer_email: "leo@example.com"
+        }
+      }
+
+      assert_redirected_to public_client_path(
+        @client.slug,
+        enseigne_id: @enseigne.id,
+        service_id: @service.id,
+        date: Date.new(2026, 3, 16)
+      )
+
+      follow_redirect!
+      assert_response :success
+      assert_equal Bookings::Errors.message_for(Bookings::Errors::SESSION_EXPIRED), flash[:alert]
+
+      booking.reload
+      assert_equal "pending", booking.booking_status
+    end
+  end
 end

@@ -283,6 +283,22 @@ Ce dernier index est critique :
 - index composes sur les horaires hebdomadaires :
   - `client_id + day_of_week`
   - `enseigne_id + day_of_week`
+  - unique exact sur `parent_id + day_of_week + opens_at + closes_at`
+
+### Durcissement des horaires hebdomadaires
+
+Pour `client_opening_hours` et `enseigne_opening_hours`, la strategie retenue est volontairement conservative :
+
+- un doublon exact sur une meme entite et un meme jour est supprime automatiquement pendant la migration
+- un overlap non trivial sur une meme entite et un meme jour n'est pas fusionne automatiquement
+- si de tels overlaps existent encore, la migration echoue explicitement avec un diagnostic
+- les plages contigues restent autorisees
+- plusieurs plages disjointes restent autorisees
+
+Effet :
+
+- la base peut ensuite porter des contraintes fortes sans inventer de correction heuristique
+- les cas ambigus de donnees horaires doivent etre corriges explicitement avant de poursuivre
 
 ## 6. Fonctionnement de la base dans le moteur de reservation
 
@@ -330,6 +346,12 @@ En revanche, la base soutient cette logique en stockant :
 - les horaires de reference
 
 Le moteur applicatif s'appuie ensuite sur ces donnees pour calculer les overlaps et filtrer les slots.
+
+Pour les horaires hebdomadaires :
+
+- la base interdit les doublons exacts et les overlaps sur une meme entite et un meme jour
+- la migration de durcissement ne corrige automatiquement que les doublons exacts
+- les overlaps non triviaux restent bloquants tant qu'ils ne sont pas corriges manuellement
 
 ## 7. Architecture actuelle de disponibilite
 

@@ -136,7 +136,8 @@ CREATE TABLE public.client_opening_hours (
     opens_at time without time zone NOT NULL,
     closes_at time without time zone NOT NULL,
     created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL
+    updated_at timestamp(6) without time zone NOT NULL,
+    CONSTRAINT client_opening_hours_opens_before_closes CHECK ((opens_at < closes_at))
 );
 
 
@@ -202,7 +203,8 @@ CREATE TABLE public.enseigne_opening_hours (
     opens_at time without time zone NOT NULL,
     closes_at time without time zone NOT NULL,
     created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL
+    updated_at timestamp(6) without time zone NOT NULL,
+    CONSTRAINT enseigne_opening_hours_opens_before_closes CHECK ((opens_at < closes_at))
 );
 
 
@@ -371,6 +373,14 @@ ALTER TABLE ONLY public.bookings
 
 
 --
+-- Name: client_opening_hours client_opening_hours_no_overlapping_intervals_per_day; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.client_opening_hours
+    ADD CONSTRAINT client_opening_hours_no_overlapping_intervals_per_day EXCLUDE USING gist (client_id WITH =, day_of_week WITH =, int4range((EXTRACT(epoch FROM opens_at))::integer, (EXTRACT(epoch FROM closes_at))::integer, '[)'::text) WITH &&);
+
+
+--
 -- Name: client_opening_hours client_opening_hours_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -384,6 +394,14 @@ ALTER TABLE ONLY public.client_opening_hours
 
 ALTER TABLE ONLY public.clients
     ADD CONSTRAINT clients_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: enseigne_opening_hours enseigne_opening_hours_no_overlapping_intervals_per_day; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.enseigne_opening_hours
+    ADD CONSTRAINT enseigne_opening_hours_no_overlapping_intervals_per_day EXCLUDE USING gist (enseigne_id WITH =, day_of_week WITH =, int4range((EXTRACT(epoch FROM opens_at))::integer, (EXTRACT(epoch FROM closes_at))::integer, '[)'::text) WITH &&);
 
 
 --
@@ -468,6 +486,13 @@ CREATE INDEX index_client_opening_hours_on_client_id ON public.client_opening_ho
 
 
 --
+-- Name: index_client_opening_hours_on_exact_interval_per_day; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_client_opening_hours_on_exact_interval_per_day ON public.client_opening_hours USING btree (client_id, day_of_week, opens_at, closes_at);
+
+
+--
 -- Name: index_clients_on_slug; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -486,6 +511,13 @@ CREATE INDEX index_enseigne_opening_hours_on_enseigne_and_day ON public.enseigne
 --
 
 CREATE INDEX index_enseigne_opening_hours_on_enseigne_id ON public.enseigne_opening_hours USING btree (enseigne_id);
+
+
+--
+-- Name: index_enseigne_opening_hours_on_exact_interval_per_day; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_enseigne_opening_hours_on_exact_interval_per_day ON public.enseigne_opening_hours USING btree (enseigne_id, day_of_week, opens_at, closes_at);
 
 
 --
@@ -572,6 +604,7 @@ ALTER TABLE ONLY public.bookings
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260401150000'),
 ('20260401120000'),
 ('20260325130000'),
 ('20260325123000'),

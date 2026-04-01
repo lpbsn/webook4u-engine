@@ -164,6 +164,8 @@ Si le domaine evolue au point de rendre cet invariant insuffisant ou obsolete, i
 - les horaires hebdomadaires ne suffiront plus comme unique modele
 - il faudra prioriser correctement horaires standards et exceptions
 - la disponibilite ne devra pas etre derivee d'horaires contradictoires
+- le socle hebdomadaire actuel repose seulement sur une deduplication exacte automatique
+- les overlaps non triviaux sur horaires hebdomadaires restent volontairement bloquants et non auto-fusionnes
 
 ### Questions de DB a traiter
 

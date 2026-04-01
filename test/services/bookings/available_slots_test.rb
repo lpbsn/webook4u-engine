@@ -269,4 +269,29 @@ class Bookings::AvailableSlotsTest < ActiveSupport::TestCase
       assert_includes slots, slot
     end
   end
+
+  test "does not duplicate slots when day has multiple disjoint opening intervals" do
+    @client.client_opening_hours.where(day_of_week: 1).delete_all
+    @client.client_opening_hours.create!(day_of_week: 1, opens_at: "09:00", closes_at: "12:00")
+    @client.client_opening_hours.create!(day_of_week: 1, opens_at: "14:00", closes_at: "18:00")
+
+    travel_to Time.zone.local(2026, 3, 15, 8, 0, 0) do
+      monday = Date.new(2026, 3, 16)
+
+      slots = Bookings::AvailableSlots.new(
+        client: @client,
+        enseigne: @enseigne,
+        service: @service,
+        date: monday
+      ).call
+
+      assert_equal slots.uniq, slots
+      assert_includes slots, Time.zone.local(2026, 3, 16, 9, 0, 0)
+      assert_includes slots, Time.zone.local(2026, 3, 16, 11, 30, 0)
+      assert_not_includes slots, Time.zone.local(2026, 3, 16, 12, 0, 0)
+      assert_not_includes slots, Time.zone.local(2026, 3, 16, 13, 30, 0)
+      assert_includes slots, Time.zone.local(2026, 3, 16, 14, 0, 0)
+      assert_includes slots, Time.zone.local(2026, 3, 16, 17, 30, 0)
+    end
+  end
 end

@@ -136,6 +136,7 @@ Comportement controller :
 - soit par expiration logique
   - le booking reste `pending` en base
   - il n'est plus bloquant ni confirmable
+  - un batch periodique peut ensuite le supprimer physiquement sans changer la logique du tunnel
 
 ### Erreurs de transition non persistees
 

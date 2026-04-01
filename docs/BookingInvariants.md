@@ -93,6 +93,7 @@ Un booking est bloquant si :
 - ou il est `pending` et encore actif
 
 Un `pending` expire ne bloque plus.
+Il peut encore exister physiquement en base jusqu'au prochain batch de purge.
 
 ### Semantique d'overlap
 
@@ -155,8 +156,10 @@ Le systeme bloque des intervalles reels, pas uniquement des `start_time` :
   - le statut existe deja
   - l'orientation actuelle est de ne pas l'utiliser pour les erreurs metier transitoires
   - les transitions exactes restent a definir avec le design paiement
-- pas de purge des pending expires :
-  - l'expiration est logique, pas materialisee par un autre statut
+- purge periodique des pending expires :
+  - l'expiration reste logique immediatement
+  - la suppression physique se fait ensuite par batch
+  - aucun nouveau statut n'est introduit
 - pas d'annulation ni de replanification dans le flux courant
 
 ## 7. Zones a surveiller

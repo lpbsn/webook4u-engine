@@ -84,6 +84,108 @@ class BookingsControllerTest < ActionDispatch::IntegrationTest
     end
   end
 
+  test "GET #show redirects to client page with SESSION_EXPIRED when pending booking is expired" do
+    travel_to Time.zone.local(2026, 3, 15, 8, 0, 0) do
+      booking = @client.bookings.create!(
+        enseigne: @enseigne,
+        service: @service,
+        booking_start_time: Time.zone.local(2026, 3, 16, 10, 0, 0),
+        booking_end_time: Time.zone.local(2026, 3, 16, 10, 30, 0),
+        booking_status: :pending,
+        booking_expires_at: 1.minute.ago
+      )
+
+      get pending_booking_path(@client.slug, booking.pending_access_token)
+
+      assert_redirected_to public_client_path(
+        @client.slug,
+        enseigne_id: @enseigne.id,
+        service_id: @service.id,
+        date: Date.new(2026, 3, 16)
+      )
+      follow_redirect!
+      assert_equal Bookings::Errors.message_for(Bookings::Errors::SESSION_EXPIRED), flash[:alert]
+    end
+  end
+
+  test "GET #show redirects to client page with SESSION_EXPIRED after expired pending booking has been purged" do
+    travel_to Time.zone.local(2026, 3, 15, 8, 0, 0) do
+      booking = @client.bookings.create!(
+        enseigne: @enseigne,
+        service: @service,
+        booking_start_time: Time.zone.local(2026, 3, 16, 10, 0, 0),
+        booking_end_time: Time.zone.local(2026, 3, 16, 10, 30, 0),
+        booking_status: :pending,
+        booking_expires_at: 1.minute.ago
+      )
+      token = booking.pending_access_token
+
+      Bookings::PurgeExpiredPending.call(cutoff: Time.zone.now)
+
+      get pending_booking_path(@client.slug, token)
+
+      assert_redirected_to public_client_path(
+        @client.slug,
+        enseigne_id: @enseigne.id,
+        service_id: @service.id,
+        date: Date.new(2026, 3, 16)
+      )
+      follow_redirect!
+      assert_equal Bookings::Errors.message_for(Bookings::Errors::SESSION_EXPIRED), flash[:alert]
+    end
+  end
+
+  test "GET #show expired drops inactive enseigne from redirect context before purge" do
+    travel_to Time.zone.local(2026, 3, 15, 8, 0, 0) do
+      booking = @client.bookings.create!(
+        enseigne: @enseigne,
+        service: @service,
+        booking_start_time: Time.zone.local(2026, 3, 16, 10, 0, 0),
+        booking_end_time: Time.zone.local(2026, 3, 16, 10, 30, 0),
+        booking_status: :pending,
+        booking_expires_at: 1.minute.ago
+      )
+      @enseigne.update!(active: false)
+
+      get pending_booking_path(@client.slug, booking.pending_access_token)
+
+      assert_redirected_to public_client_path(
+        @client.slug,
+        service_id: @service.id,
+        date: Date.new(2026, 3, 16)
+      )
+      follow_redirect!
+      assert_equal Bookings::Errors.message_for(Bookings::Errors::SESSION_EXPIRED), flash[:alert]
+    end
+  end
+
+  test "GET #show expired drops inactive enseigne from redirect context after purge" do
+    travel_to Time.zone.local(2026, 3, 15, 8, 0, 0) do
+      booking = @client.bookings.create!(
+        enseigne: @enseigne,
+        service: @service,
+        booking_start_time: Time.zone.local(2026, 3, 16, 10, 0, 0),
+        booking_end_time: Time.zone.local(2026, 3, 16, 10, 30, 0),
+        booking_status: :pending,
+        booking_expires_at: 1.minute.ago
+      )
+      token = booking.pending_access_token
+      @enseigne.update!(active: false)
+
+      Bookings::PurgeExpiredPending.call(cutoff: Time.zone.now)
+
+      get pending_booking_path(@client.slug, token)
+
+      assert_redirected_to public_client_path(
+        @client.slug,
+        service_id: @service.id,
+        date: Date.new(2026, 3, 16)
+      )
+      follow_redirect!
+      assert_equal Bookings::Errors.message_for(Bookings::Errors::SESSION_EXPIRED), flash[:alert]
+    end
+  end
+
   test "POST #create_pending redirects to client page with alert when start_time is invalid" do
     travel_to Time.zone.local(2026, 3, 15, 8, 0, 0) do
       post service_bookings_path(@client.slug, @service),
@@ -265,7 +367,40 @@ class BookingsControllerTest < ActionDispatch::IntegrationTest
     end
   end
 
-  test "POST #create handles replay with confirmed booking via business error (NOT_PENDING)" do
+  test "POST #create redirects to client page with SESSION_EXPIRED after expired pending booking has been purged" do
+    travel_to Time.zone.local(2026, 3, 15, 8, 0, 0) do
+      booking = @client.bookings.create!(
+        enseigne: @enseigne,
+        service: @service,
+        booking_start_time: Time.zone.local(2026, 3, 16, 12, 30, 0),
+        booking_end_time: Time.zone.local(2026, 3, 16, 13, 0, 0),
+        booking_status: :pending,
+        booking_expires_at: 1.minute.ago
+      )
+      token = booking.pending_access_token
+
+      Bookings::PurgeExpiredPending.call(cutoff: Time.zone.now)
+
+      post confirm_booking_path(@client.slug, token), params: {
+        booking: {
+          customer_first_name: "Léonard",
+          customer_last_name: "Boisson",
+          customer_email: "leo@example.com"
+        }
+      }
+
+      assert_redirected_to public_client_path(
+        @client.slug,
+        enseigne_id: @enseigne.id,
+        service_id: @service.id,
+        date: Date.new(2026, 3, 16)
+      )
+      follow_redirect!
+      assert_equal Bookings::Errors.message_for(Bookings::Errors::SESSION_EXPIRED), flash[:alert]
+    end
+  end
+
+  test "POST #create returns 404 for confirmed booking token" do
     travel_to Time.zone.local(2026, 3, 15, 8, 0, 0) do
       booking = @client.bookings.create!(
         enseigne: @enseigne,
@@ -287,18 +422,7 @@ class BookingsControllerTest < ActionDispatch::IntegrationTest
         }
       }
 
-      assert_redirected_to public_client_path(
-        @client.slug,
-        enseigne_id: @enseigne.id,
-        service_id: @service.id,
-        date: Date.new(2026, 3, 16)
-      )
-      follow_redirect!
-      assert_equal Bookings::Errors.message_for(Bookings::Errors::NOT_PENDING), flash[:alert]
-
-      booking.reload
-      assert_equal "confirmed", booking.booking_status
-      assert_equal "Léonard", booking.customer_first_name
+      assert_response :not_found
     end
   end
 
@@ -327,6 +451,39 @@ class BookingsControllerTest < ActionDispatch::IntegrationTest
         service_id: @service.id,
         date: Date.new(2026, 3, 16)
       )
+    end
+  end
+
+  test "POST #create after purge drops inactive enseigne from redirect context" do
+    travel_to Time.zone.local(2026, 3, 15, 8, 0, 0) do
+      booking = @client.bookings.create!(
+        enseigne: @enseigne,
+        service: @service,
+        booking_start_time: Time.zone.local(2026, 3, 16, 14, 30, 0),
+        booking_end_time: Time.zone.local(2026, 3, 16, 15, 0, 0),
+        booking_status: :pending,
+        booking_expires_at: 1.minute.ago
+      )
+      token = booking.pending_access_token
+      @enseigne.update!(active: false)
+
+      Bookings::PurgeExpiredPending.call(cutoff: Time.zone.now)
+
+      post confirm_booking_path(@client.slug, token), params: {
+        booking: {
+          customer_first_name: "Léonard",
+          customer_last_name: "Boisson",
+          customer_email: "leo@example.com"
+        }
+      }
+
+      assert_redirected_to public_client_path(
+        @client.slug,
+        service_id: @service.id,
+        date: Date.new(2026, 3, 16)
+      )
+      follow_redirect!
+      assert_equal Bookings::Errors.message_for(Bookings::Errors::SESSION_EXPIRED), flash[:alert]
     end
   end
 

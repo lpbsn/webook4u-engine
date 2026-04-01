@@ -186,6 +186,7 @@ Colonnes importantes :
 Lecture metier :
 
 - un booking `pending` maintient temporairement un creneau
+- un booking `pending` expire cesse d'etre bloquant immediatement, meme avant sa suppression physique par batch
 - un booking `confirmed` represente une reservation confirmee
 - `failed` existe deja comme valeur de schema
   - orientation actuelle : futur usage pour un echec paiement persistant

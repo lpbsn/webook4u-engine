@@ -2,8 +2,7 @@ class BookingsController < ApplicationController
   layout "booking"
   before_action :load_client
   before_action :load_creation_context, only: %i[create_pending]
-  before_action :load_booking_by_pending_access_token, only: %i[create]
-  before_action :load_pending_booking_for_show, only: %i[show]
+  before_action :load_public_pending_booking, only: %i[show create]
   before_action :load_booking_by_confirmation_token, only: %i[success]
 
   def create_pending
@@ -68,14 +67,52 @@ class BookingsController < ApplicationController
     @booking_date = redirect_date(@booking_start_time)
   end
 
-  def load_booking_by_pending_access_token
-    @booking = @client.bookings.find_by!(pending_access_token: params[:token])
-    hydrate_booking_relations
+  def load_public_pending_booking
+    @booking = @client.bookings.pending.find_by(pending_access_token: params[:token])
+    if @booking.present?
+      if @booking.expired?
+        redirect_to_session_expired_for(
+          enseigne_id: @booking.enseigne_id,
+          service_id: @booking.service_id,
+          date: @booking.booking_start_time.to_date
+        )
+        return
+      end
+
+      hydrate_booking_relations
+      return
+    end
+
+    expired_context = expired_link_context_for_token
+    if expired_context.present?
+      redirect_to_session_expired_for(
+        enseigne_id: expired_context[:enseigne_id],
+        service_id: expired_context[:service_id],
+        date: expired_context[:date]
+      )
+      return
+    end
+
+    raise ActiveRecord::RecordNotFound
   end
 
-  def load_pending_booking_for_show
-    @booking = @client.bookings.pending.find_by!(pending_access_token: params[:token])
-    hydrate_booking_relations
+  def expired_link_context_for_token
+    Bookings::PurgeExpiredPending.expired_link_context_for(
+      client_id: @client.id,
+      token: params[:token]
+    )
+  end
+
+  def redirect_to_session_expired_for(enseigne_id:, service_id:, date:)
+    enseigne = @client.enseignes.find_by(id: enseigne_id)
+
+    redirect_to public_client_path(
+      @client.slug,
+      enseigne_id: redirect_enseigne_id(enseigne),
+      service_id: service_id,
+      date: date
+    ),
+                alert: Bookings::Errors.message_for(Bookings::Errors::SESSION_EXPIRED)
   end
 
   def load_booking_by_confirmation_token

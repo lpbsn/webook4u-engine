@@ -12,37 +12,28 @@ module Bookings
     end
 
     def call
-      return failure(Errors::INVALID_SLOT) if booking_start_time.nil?
       return failure(Errors::PENDING_CREATION_FAILED) unless valid_enseigne_context?
 
-      booking_end_time = booking_start_time + service.duration_minutes.minutes
+      resource = Resource.for_enseigne(client: client, enseigne: enseigne)
+      decision = slot_decision(resource: resource)
+      return failure(decision.error_code) unless decision.bookable?
+
       booking = nil
 
-      SlotLock.with_lock(enseigne_id: enseigne.id, booking_start_time: booking_start_time) do
-        if Availability.slot_blocked?(
-          client: client,
-          enseigne: enseigne,
-          service: service,
-          booking_start_time: booking_start_time
-        )
-          return failure(Errors::SLOT_UNAVAILABLE)
-        end
-
-        unless Availability.valid_generated_slot?(
-          client: client,
-          enseigne: enseigne,
-          service: service,
-          booking_start_time: booking_start_time
-        )
-          return failure(Errors::SLOT_NOT_BOOKABLE)
-        end
+      # Etape 1: on sérialise au niveau de l'enseigne entière.
+      # Cela évite les conflits concurrents pendant la fenêtre critique,
+      # au prix d'une concurrence plus faible entre créneaux indépendants
+      # d'une même enseigne.
+      SlotLock.with_lock(resource: resource) do
+        locked_decision = slot_decision(resource: resource)
+        return failure(locked_decision.error_code) unless locked_decision.bookable?
 
         booking = Booking.create!(
           client: client,
           enseigne: enseigne,
           service: service,
-          booking_start_time: booking_start_time,
-          booking_end_time: booking_end_time,
+          booking_start_time: locked_decision.booking_start_time,
+          booking_end_time: locked_decision.booking_end_time,
           booking_status: :pending,
           booking_expires_at: BookingRules.pending_expires_at
         )
@@ -51,6 +42,10 @@ module Bookings
       success(booking)
     rescue ActiveRecord::RecordInvalid
       failure(Errors::PENDING_CREATION_FAILED)
+    rescue ActiveRecord::StatementInvalid => error
+      raise unless Errors.booking_conflict_exception?(error)
+
+      failure(Errors::SLOT_UNAVAILABLE)
     end
 
     private
@@ -59,6 +54,16 @@ module Bookings
 
     def valid_enseigne_context?
       enseigne.present? && enseigne.active? && enseigne.client_id == client.id
+    end
+
+    def slot_decision(resource:)
+      Bookings::SlotDecision.new(
+        client: client,
+        enseigne: enseigne,
+        service: service,
+        booking_start_time: booking_start_time,
+        resource: resource
+      ).call
     end
 
     def success(booking)

@@ -38,9 +38,11 @@ module Bookings
 
     def blocking_intervals_for_day
       @blocking_intervals_for_day ||= begin
+        resource = Resource.for_enseigne(client: client, enseigne: enseigne)
+
         BlockingBookings.intervals_for_range(
           client: client,
-          enseigne: enseigne,
+          resource: resource,
           range_start: opening_intervals.first.first,
           range_end: opening_intervals.last.last
         )

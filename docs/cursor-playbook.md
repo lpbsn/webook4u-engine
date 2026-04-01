@@ -1,4 +1,4 @@
-# Cursor Playbook — Rails MVP (webook4u)
+# Cursor Playbook — Rails (webook4u)
 
 ## Objectif
 

@@ -100,16 +100,24 @@ Le systeme bloque des intervalles reels, pas uniquement des `start_time` :
 
 ### Advisory lock
 
-- `SlotLock` serialise les creations et confirmations sur la cle `enseigne_id + booking_start_time`
+- `SlotLock` serialise aujourd'hui les creations et confirmations au niveau de l'enseigne entiere
 - c'est une protection transactionnelle PostgreSQL de type advisory lock
+- cette granularite est un compromis volontaire de l'etape 1
+- effet :
+  - deux operations sur des creneaux differents de la meme enseigne ne passent pas en parallele
+  - le throughput intra-enseigne est donc plus faible que la granularite metier reelle
+- ce verrou ne doit pas etre lu comme l'invariant final du domaine
+- evolution cible :
+  - conserver l'invariant metier d'overlap par intervalle
+  - deplacer plus tard la cle de verrou vers une ressource plus fine (`staff` / `resource`)
 
 ### Garde-fou d'unicite
 
-- la base interdit deux bookings `confirmed` sur la meme paire `enseigne_id + booking_start_time`
+- la base interdit deux bookings `confirmed` dont les intervalles overlapent sur une meme enseigne
 
 ### Portee de la garantie
 
-- le lock est centre sur le `start_time` exact
+- le lock est aujourd'hui centre sur l'enseigne entiere
 - la regle metier de blocage reste basee sur les overlaps d'intervalles
 - il faut donc distinguer :
   - la cle technique du verrou

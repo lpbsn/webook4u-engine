@@ -65,7 +65,13 @@ Note de domaine :
 - Le slot doit provenir de la grille systeme, pas d'un timestamp arbitraire.
 - Le slot ne doit pas deja etre bloque par un `confirmed` ou un `pending` actif.
 - Un pending valide recoit une expiration a 5 minutes.
-- La creation est serialisee par `SlotLock.with_lock(enseigne_id:, booking_start_time:)`.
+- La creation est serialisee par `SlotLock.with_lock(resource:)`.
+- En etape 1, cette ressource est mapee a l'enseigne entiere.
+- Ce choix est volontairement plus grossier que l'invariant metier d'overlap :
+  il serialize aussi des creations/confirmations sur des creneaux independants
+  de la meme enseigne.
+- C'est un compromis transitoire pour garder une cle de verrou stable avant
+  l'introduction d'une ressource plus fine comme `staff` ou equivalent.
 
 ### 3.2 Confirmation d'un booking
 
@@ -74,7 +80,7 @@ Note de domaine :
 - La disponibilite est reverifiee au moment de confirmer.
 - Les champs client sont requis au moment du passage a `confirmed`.
 - Une confirmation reussie genere un `confirmation_token` unique.
-- En dernier rempart, la DB empeche deux `confirmed` sur la meme paire `enseigne_id + booking_start_time`.
+- En dernier rempart, la DB empeche deux `confirmed` overlapants sur une meme enseigne.
 
 ### 3.3 Erreurs metier et UX
 

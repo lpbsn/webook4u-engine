@@ -166,7 +166,7 @@ class BookingDuplicatesFlowTest < ActionDispatch::IntegrationTest
   # impossible d'avoir 2 confirmed sur le même créneau
   # dans la même enseigne
   # =========================================================
-  test "database unique index prevents duplicate confirmed bookings on the same slot" do
+  test "database overlap protection prevents duplicate confirmed bookings on overlapping intervals" do
     travel_to Time.zone.local(2026, 3, 15, 8, 0, 0) do
       slot = Time.zone.local(2026, 3, 16, 14, 0, 0)
 
@@ -181,18 +181,20 @@ class BookingDuplicatesFlowTest < ActionDispatch::IntegrationTest
         customer_email: "leo@example.com"
       )
 
-      assert_raises ActiveRecord::RecordNotUnique do
+      error = assert_raises ActiveRecord::StatementInvalid do
         @client.bookings.create!(
           enseigne: @enseigne,
           service: @service,
-          booking_start_time: slot,
-          booking_end_time: slot + 30.minutes,
+          booking_start_time: slot + 15.minutes,
+          booking_end_time: slot + 45.minutes,
           booking_status: :confirmed,
           customer_first_name: "Other",
           customer_last_name: "User",
           customer_email: "other@example.com"
         )
       end
+
+      assert_instance_of PG::ExclusionViolation, error.cause
     end
   end
 

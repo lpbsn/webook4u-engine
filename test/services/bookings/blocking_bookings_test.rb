@@ -27,7 +27,7 @@ class Bookings::BlockingBookingsTest < ActiveSupport::TestCase
       # Interval 10:15–10:45 should overlap
       overlaps = Bookings::BlockingBookings.overlapping(
         client: @client,
-        enseigne: @enseigne,
+        resource: Bookings::Resource.for_enseigne(client: @client, enseigne: @enseigne),
         start_time: Time.zone.local(2026, 3, 16, 10, 15, 0),
         end_time:   Time.zone.local(2026, 3, 16, 10, 45, 0)
       )
@@ -79,7 +79,7 @@ class Bookings::BlockingBookingsTest < ActiveSupport::TestCase
 
       intervals = Bookings::BlockingBookings.intervals_for_range(
         client: @client,
-        enseigne: @enseigne,
+        resource: Bookings::Resource.for_enseigne(client: @client, enseigne: @enseigne),
         range_start: day_start,
         range_end: day_end
       )
@@ -106,7 +106,7 @@ class Bookings::BlockingBookingsTest < ActiveSupport::TestCase
 
       overlaps = Bookings::BlockingBookings.overlapping(
         client: @client,
-        enseigne: @other_enseigne,
+        resource: Bookings::Resource.for_enseigne(client: @client, enseigne: @other_enseigne),
         start_time: Time.zone.local(2026, 3, 16, 10, 0, 0),
         end_time: Time.zone.local(2026, 3, 16, 10, 30, 0)
       )

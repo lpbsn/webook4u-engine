@@ -7,9 +7,10 @@ class BookingsController < ApplicationController
   before_action :load_booking_by_confirmation_token, only: %i[success]
 
   def new
-    return unless previewable_slot?
+    decision = slot_decision
+    return redirect_to_pending_selection(decision.error_message) unless decision.bookable?
 
-    build_pending_booking_preview
+    build_pending_booking_preview(decision)
   end
 
   def create_pending
@@ -112,8 +113,9 @@ class BookingsController < ApplicationController
     @booking_end_time = @booking.booking_end_time
   end
 
-  def build_pending_booking_preview
-    @booking_end_time = @booking_start_time + @service.duration_minutes.minutes
+  def build_pending_booking_preview(decision)
+    @booking_start_time = decision.booking_start_time
+    @booking_end_time = decision.booking_end_time
     @booking = Booking.new(
       client: @client,
       enseigne: @enseigne,
@@ -124,33 +126,13 @@ class BookingsController < ApplicationController
     )
   end
 
-  def previewable_slot?
-    if @booking_start_time.nil?
-      redirect_to_pending_selection(Bookings::Errors.message_for(Bookings::Errors::INVALID_SLOT))
-      return false
-    end
-
-    if Bookings::Availability.slot_blocked?(
+  def slot_decision
+    @slot_decision ||= Bookings::SlotDecision.new(
       client: @client,
       enseigne: @enseigne,
       service: @service,
       booking_start_time: @booking_start_time
-    )
-      redirect_to_pending_selection(Bookings::Errors.message_for(Bookings::Errors::SLOT_UNAVAILABLE))
-      return false
-    end
-
-    unless Bookings::Availability.valid_generated_slot?(
-      client: @client,
-      enseigne: @enseigne,
-      service: @service,
-      booking_start_time: @booking_start_time
-    )
-      redirect_to_pending_selection(Bookings::Errors.message_for(Bookings::Errors::SLOT_NOT_BOOKABLE))
-      return false
-    end
-
-    true
+    ).call
   end
 
   def redirect_to_pending_selection(message)

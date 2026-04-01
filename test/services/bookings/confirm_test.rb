@@ -303,4 +303,47 @@ class Bookings::ConfirmTest < ActiveSupport::TestCase
       assert_equal "pending", booking.booking_status
     end
   end
+
+  test "re-raises non allowlisted record not unique constraint errors during confirmation" do
+    travel_to Time.zone.local(2026, 3, 15, 8, 0, 0) do
+      booking = @client.bookings.create!(
+        enseigne: @enseigne,
+        service: @service,
+        booking_start_time: Time.zone.local(2026, 3, 16, 15, 0, 0),
+        booking_end_time: Time.zone.local(2026, 3, 16, 15, 30, 0),
+        booking_status: :pending,
+        booking_expires_at: BookingRules.pending_expires_at
+      )
+
+      unknown_constraint_name = "index_clients_on_slug"
+      fake_pg_result = Object.new
+      fake_pg_result.define_singleton_method(:error_field) do |_field|
+        unknown_constraint_name
+      end
+
+      fake_pg_error = PG::UniqueViolation.new("duplicate key value violates unique constraint")
+      fake_pg_error.define_singleton_method(:result) { fake_pg_result }
+
+      unknown_constraint_error = ActiveRecord::RecordNotUnique.new("unknown unique constraint")
+      unknown_constraint_error.define_singleton_method(:cause) { fake_pg_error }
+
+      booking.define_singleton_method(:update!) do |_attrs|
+        raise unknown_constraint_error
+      end
+
+      assert_raises ActiveRecord::RecordNotUnique do
+        Bookings::Confirm.new(
+          booking: booking,
+          booking_params: {
+            customer_first_name: "Léonard",
+            customer_last_name: "Boisson",
+            customer_email: "leo@example.com"
+          }
+        ).call
+      end
+
+      booking.reload
+      assert_equal "pending", booking.booking_status
+    end
+  end
 end

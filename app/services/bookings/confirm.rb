@@ -13,16 +13,14 @@ module Bookings
       return failure(Errors::NOT_PENDING) unless booking.pending?
       return failure(Errors::SESSION_EXPIRED) if booking.expired?
 
-      SlotLock.with_lock(enseigne_id: booking.enseigne_id, booking_start_time: booking.booking_start_time) do
-        if Availability.slot_blocked?(
-          client: booking.client,
-          enseigne: booking.enseigne,
-          service: booking.service,
-          booking_start_time: booking.booking_start_time,
-          exclude_booking_id: booking.id
-        )
-          return failure(Errors::SLOT_UNAVAILABLE)
-        end
+      resource = Resource.for_enseigne(client: booking.client, enseigne: booking.enseigne)
+
+      # Etape 1: la confirmation est sérialisée au niveau de l'enseigne entière.
+      # Ce n'est pas la granularité métier cible long terme; c'est un compromis
+      # temporaire avant l'introduction d'une ressource plus fine à réserver.
+      SlotLock.with_lock(resource: resource) do
+        decision = slot_decision(resource: resource)
+        return failure(decision.error_code) unless decision.bookable?
 
         booking.update!(
           confirmation_token: SecureRandom.uuid,
@@ -36,13 +34,26 @@ module Bookings
       success(booking)
     rescue ActiveRecord::RecordInvalid
       failure(Errors::FORM_INVALID)
-    rescue ActiveRecord::RecordNotUnique
+    rescue ActiveRecord::RecordNotUnique, ActiveRecord::StatementInvalid => error
+      raise unless Errors.booking_conflict_exception?(error)
+
       failure(Errors::SLOT_TAKEN_DURING_CONFIRM)
     end
 
     private
 
     attr_reader :booking, :booking_params
+
+    def slot_decision(resource:)
+      Bookings::SlotDecision.new(
+        client: booking.client,
+        enseigne: booking.enseigne,
+        service: booking.service,
+        booking_start_time: booking.booking_start_time,
+        exclude_booking_id: booking.id,
+        resource: resource
+      ).without_generated_slot_requirement.call
+    end
 
     def success(booking)
       Result.new(success?: true, booking: booking, error_code: nil, error_message: nil)

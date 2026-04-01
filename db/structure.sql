@@ -10,6 +10,20 @@ SET client_min_messages = warning;
 SET row_security = off;
 
 --
+-- Name: btree_gist; Type: EXTENSION; Schema: -; Owner: -
+--
+
+CREATE EXTENSION IF NOT EXISTS btree_gist WITH SCHEMA public;
+
+
+--
+-- Name: EXTENSION btree_gist; Type: COMMENT; Schema: -; Owner: -
+--
+
+COMMENT ON EXTENSION btree_gist IS 'support for indexing common datatypes in GiST';
+
+
+--
 -- Name: enforce_bookings_client_consistency(); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -341,6 +355,14 @@ ALTER TABLE ONLY public.ar_internal_metadata
 
 
 --
+-- Name: bookings bookings_confirmed_no_overlapping_intervals_per_enseigne; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.bookings
+    ADD CONSTRAINT bookings_confirmed_no_overlapping_intervals_per_enseigne EXCLUDE USING gist (enseigne_id WITH =, tsrange(booking_start_time, booking_end_time, '[)'::text) WITH &&) WHERE (((booking_status)::text = 'confirmed'::text));
+
+
+--
 -- Name: bookings bookings_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -408,13 +430,6 @@ CREATE INDEX index_bookings_on_client_id ON public.bookings USING btree (client_
 --
 
 CREATE UNIQUE INDEX index_bookings_on_confirmation_token ON public.bookings USING btree (confirmation_token);
-
-
---
--- Name: index_bookings_on_enseigne_and_start_time_confirmed; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE UNIQUE INDEX index_bookings_on_enseigne_and_start_time_confirmed ON public.bookings USING btree (enseigne_id, booking_start_time) WHERE ((booking_status)::text = 'confirmed'::text);
 
 
 --
@@ -557,6 +572,7 @@ ALTER TABLE ONLY public.bookings
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260401120000'),
 ('20260325130000'),
 ('20260325123000'),
 ('20260325113000'),

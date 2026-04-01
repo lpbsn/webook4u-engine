@@ -4,11 +4,11 @@
 
 Ce document définit le périmètre produit actuel de Webook4u avec une lecture produit et stratégique.
 
-Son rôle est de garder un cadre clair sur le MVP, d’éviter les faux signaux produit, et d’aligner l’équipe sur ce que le produit est aujourd’hui, ce qu’il n’est pas encore, et ce qu’il prépare pour la suite.
+Son rôle est de garder un cadre clair sur le produit, d’éviter les faux signaux produit, et d’aligner l’équipe sur ce que le produit est aujourd’hui, ce qu’il n’est pas encore, et ce qu’il prépare pour la suite.
 
 ## Intention produit
 
-Webook4u est aujourd’hui un moteur de réservation public simple, conçu pour sortir un MVP utile rapidement.
+Webook4u est aujourd’hui un moteur de réservation public simple.
 
 L’objectif actuel n’est pas de construire une plateforme complète de réservation.
 L’objectif actuel est de rendre fiable la sélection, le blocage temporaire et la confirmation d’un créneau, afin de pouvoir itérer vite sans construire une base fragile.
@@ -17,7 +17,7 @@ Dans son état actuel, le produit doit surtout bien faire une chose :
 
 - permettre à un utilisateur final de réserver un créneau via un tunnel public court et compréhensible
 
-## Promesse MVP actuelle
+## Promesse actuelle
 
 Aujourd’hui, la promesse produit est la suivante :
 
@@ -27,10 +27,10 @@ Aujourd’hui, la promesse produit est la suivante :
 - choisir un créneau disponible
 - confirmer une réservation
 
-Il s’agit d’un MVP de réservation.
-Ce n’est pas encore un MVP de paiement.
-Ce n’est pas encore un MVP d’opérations.
-Ce n’est pas encore un MVP de gestion de planning staff.
+Il s’agit d’un moteur de réservation.
+Ce n’est pas encore un moteur de paiement.
+Ce n’est pas encore un moteur d’opérations.
+Ce n’est pas encore un moteur de gestion de planning staff.
 
 ## Ce que le produit supporte réellement aujourd’hui
 
@@ -45,9 +45,9 @@ Le produit supporte actuellement :
 - la confirmation d’une réservation avec prénom, nom et email
 - une page de succès après confirmation
 
-## Hypothèses stratégiques du MVP actuel
+## Hypothèses stratégiques actuel
 
-Le MVP repose actuellement sur les hypothèses suivantes :
+Webook4U repose actuellement sur les hypothèses suivantes :
 
 - les prestations sont partagées entre toutes les enseignes d’un même client
 - les horaires peuvent encore venir du niveau `client` comme fallback temporaire
@@ -60,7 +60,7 @@ Ce dernier point est important :
 - un créneau correspond actuellement à une seule capacité disponible par enseigne
 - le système ne modélise pas encore plusieurs membres du staff disponibles sur le même créneau
 
-Cette simplification est volontaire pour le MVP.
+Cette simplification est volontaire pour l'instant.
 Elle n’est pas le modèle cible du produit.
 
 ## Ce que le produit ne promet pas encore
@@ -78,7 +78,7 @@ Le produit ne promet pas encore :
 - la gestion de plusieurs staffs disponibles sur un même créneau
 - l’ingestion de créneaux directement depuis le CRM du client
 
-Ces sujets appartiennent à la suite du produit, pas au périmètre actif du MVP.
+Ces sujets appartiennent à la suite du produit, pas au périmètre actif
 
 ## Principaux risques de mauvaise interprétation produit
 
@@ -88,7 +88,7 @@ L’interface affiche aujourd’hui un prix et un wording proche de `Montant à 
 
 Risque :
 
-- des parties prenantes peuvent croire que le MVP inclut déjà le paiement
+- des parties prenantes peuvent croire que l'appli inclut déjà le paiement
 - des utilisateurs peuvent comprendre que la réservation dépend d’un checkout en ligne
 - les discussions produit peuvent partir d’une perception trop avancée de ce qui est réellement livré
 
@@ -109,7 +109,7 @@ Risque :
 Réalité actuelle :
 
 - ces champs sont des réserves pour une phase ultérieure
-- ils ne participent pas au flux actif du MVP
+- ils ne participent pas au flux actif
 
 ### Le statut `failed` peut faire croire à un cycle de vie déjà complet
 
@@ -121,7 +121,7 @@ Risque :
 
 Réalité actuelle :
 
-- le cycle de vie actif du MVP repose en pratique sur `pending` et `confirmed`
+- le cycle de vie actif repose en pratique sur `pending` et `confirmed`
 - `failed` appartient à une étape produit ultérieure
 
 ### La capacité actuelle peut être prise pour le modèle cible
@@ -179,7 +179,7 @@ La stratégie doit être :
 
 - fiabiliser le moteur actuel de réservation
 - réduire les faux signaux dans le wording et la communication produit
-- clarifier partout la promesse réelle du MVP
+- clarifier partout la promesse réelle du produit
 - garder le domaine prêt pour la future notion de capacité / staff
 - garder le domaine prêt pour l’intégration future de disponibilités externes
 - n’ajouter le paiement qu’après cette stabilisation
@@ -197,7 +197,7 @@ La trajectoire la plus logique est :
 
 ## Résumé
 
-Webook4u est aujourd’hui un MVP de réservation avec une promesse volontairement étroite :
+Webook4u est aujourd’hui un moteur de réservation avec une promesse volontairement étroite :
 
 - trouver un créneau
 - le maintenir brièvement

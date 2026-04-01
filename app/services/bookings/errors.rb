@@ -22,8 +22,43 @@ module Bookings
       SLOT_TAKEN_DURING_CONFIRM => "Le créneau sélectionné vient d'être réservé par un autre utilisateur."
     }.freeze
 
+    SLOT_CONFLICT_CONSTRAINTS = [
+      "bookings_confirmed_no_overlapping_intervals_per_enseigne",
+      # Legacy compatibility during rollout: some environments may still expose
+      # the former unique index name until every database has been migrated to
+      # the overlap exclusion constraint. Remove this entry once all
+      # environments are aligned on the new constraint.
+      "index_bookings_on_enseigne_and_start_time_confirmed"
+    ].freeze
+
     def self.message_for(code)
       MESSAGES[code]
     end
+
+    def self.booking_conflict_exception?(error)
+      cause = extract_pg_cause(error)
+      return false if cause.nil?
+
+      return false unless cause.is_a?(PG::ExclusionViolation) || cause.is_a?(PG::UniqueViolation)
+
+      SLOT_CONFLICT_CONSTRAINTS.include?(extract_constraint_name(cause))
+    end
+
+    def self.extract_pg_cause(error)
+      return error if error.is_a?(PG::Error)
+
+      error.respond_to?(:cause) ? error.cause : nil
+    end
+    private_class_method :extract_pg_cause
+
+    def self.extract_constraint_name(pg_error)
+      return nil unless pg_error.respond_to?(:result)
+
+      result = pg_error.result
+      return nil if result.nil?
+
+      result.error_field(PG::Result::PG_DIAG_CONSTRAINT_NAME)
+    end
+    private_class_method :extract_constraint_name
   end
 end

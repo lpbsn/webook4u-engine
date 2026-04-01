@@ -2,7 +2,7 @@
 alwaysApply: true
 ---
 
-Projet Ruby on Rails MVP.
+Projet Ruby on Rails.
 - privilégier small changes > big changes
 - ne jamais réécrire un fichier entier sans demande explicite
 - expliquer avant de modifier si le comportement métier est ambigu

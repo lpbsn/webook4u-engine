@@ -1,6 +1,30 @@
 require "test_helper"
 
 class BookingsCrossTableTriggerInfrastructureTest < ActiveSupport::TestCase
+  test "bootstraped database contains btree_gist extension for booking overlap protection" do
+    extension_exists = ActiveRecord::Base.connection.select_value(<<~SQL.squish)
+      SELECT EXISTS (
+        SELECT 1
+        FROM pg_extension
+        WHERE extname = 'btree_gist'
+      )
+    SQL
+
+    assert extension_exists, "Expected PostgreSQL extension btree_gist to exist in prepared database"
+  end
+
+  test "bootstraped database contains confirmed booking overlap exclusion constraint" do
+    constraint_exists = ActiveRecord::Base.connection.select_value(<<~SQL.squish)
+      SELECT EXISTS (
+        SELECT 1
+        FROM pg_constraint
+        WHERE conname = 'bookings_confirmed_no_overlapping_intervals_per_enseigne'
+      )
+    SQL
+
+    assert constraint_exists, "Expected exclusion constraint for overlapping confirmed bookings to exist"
+  end
+
   test "bootstraped database contains bookings cross-table consistency function" do
     function_exists = ActiveRecord::Base.connection.select_value(<<~SQL.squish)
       SELECT EXISTS (

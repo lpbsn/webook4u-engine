@@ -2,6 +2,11 @@
 
 module Bookings
   class SlotDecision
+    # Single point of truth for "is this slot reservable?"
+    #
+    # The slot is evaluated against a reservable Resource abstraction rather
+    # than directly against the public booking context. Today this resource is
+    # still the whole enseigne; the next target is an explicit staff resource.
     Result = Struct.new(
       :bookable?,
       :error_code,
@@ -44,6 +49,10 @@ module Bookings
     end
 
     def resource
+      # Current trivial resolution:
+      # public enseigne selection -> one implicit staff/resource for that enseigne.
+      # Once multiple staffs exist, this resolution will become an explicit
+      # domain step without changing SlotDecision's public contract.
       @resource ||= Resource.for_enseigne(client: client, enseigne: enseigne)
     end
 

@@ -7,6 +7,11 @@ module Bookings
     # Returns a relation of blocking bookings (confirmed + active pending)
     # whose intervals [booking_start_time, booking_end_time) overlap the given range
     # for the provided reservable resource.
+    #
+    # Today this resource is still resolved from the enseigne context.
+    # The future multi-capacity target is a staff-backed resource, so callers
+    # should keep passing an explicit Resource instead of reasoning directly
+    # with enseigne ids in blocking queries.
     def overlapping(client:, resource:, start_time:, end_time:, exclude_booking_id: nil)
       scope = (resource&.bookings_scope || client.bookings)
         .blocking_slot

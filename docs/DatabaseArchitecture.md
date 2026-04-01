@@ -362,6 +362,7 @@ Pour les horaires hebdomadaires :
 - la disponibilite est calculee aujourd'hui par Webook4u a partir des horaires et des bookings connus
 - les horaires `client` servent encore de fallback
 - la capacite actuelle correspond implicitement a `1 staff` par enseigne a un instant donne
+- le code applicatif prepare deja une notion de ressource reservable, mais cette ressource est encore resolue trivialement depuis l'enseigne
 
 ### Variation future deja anticipee
 
@@ -384,6 +385,7 @@ Le schema actuel est coherent pour le MVP, mais il faut garder en tete plusieurs
 - `failed` existe deja dans `bookings`, mais sans usage metier actif
 - les champs Stripe existent, mais ne pilotent pas encore le cycle de vie
 - la granularite actuelle par `enseigne` ne suffit pas pour le multi-staff
+- la future cible explicite est `bookings.staff_id`, pas un simple compteur de capacite
 - la disponibilite externe via CRM n'est pas encore modelisee
 - l'expiration des `pending` est logique, pas materialisee par un autre statut
 
@@ -398,6 +400,8 @@ La bonne lecture architecture est la suivante :
 - `enseignes` :
   - contexte de disponibilite concret
 - `bookings` :
+  - aujourd'hui attaches a un contexte `enseigne`
+  - demain attaches a ce contexte plus une ressource explicite de type `staff`
   - verite de reservation
 - `*_opening_hours` :
   - support de calcul de disponibilite

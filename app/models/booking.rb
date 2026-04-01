@@ -1,4 +1,11 @@
 class Booking < ApplicationRecord
+  # Current domain shape:
+  # - enseigne is still the visible booking context
+  # - the reservable capacity is still implicit: one staff/resource per enseigne
+  #
+  # Future target:
+  # - bookings will also reference an explicit staff-backed reservable resource
+  # - overlap protection and locking will move from enseigne-level to staff-level
   before_validation :ensure_pending_access_token
   before_validation :ensure_confirmation_token
 

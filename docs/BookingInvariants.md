@@ -109,11 +109,14 @@ Le systeme bloque des intervalles reels, pas uniquement des `start_time` :
 - ce verrou ne doit pas etre lu comme l'invariant final du domaine
 - evolution cible :
   - conserver l'invariant metier d'overlap par intervalle
-  - deplacer plus tard la cle de verrou vers une ressource plus fine (`staff` / `resource`)
+  - deplacer plus tard la cle de verrou vers un `staff`
+  - faire de `staff` la ressource reservable explicite du domaine
 
 ### Garde-fou d'unicite
 
 - la base interdit deux bookings `confirmed` dont les intervalles overlapent sur une meme enseigne
+- cette protection DB reste un garde-fou MVP, pas la granularite cible long terme
+- la cible future est une protection d'overlap sur `staff_id + intervalle`
 
 ### Portee de la garantie
 
@@ -129,6 +132,10 @@ Le systeme bloque des intervalles reels, pas uniquement des `start_time` :
   - horaires fixes, jours ouvres, pas d'exceptions avancees
 - capacite implicite :
   - 1 staff implicite par `enseigne`
+- resolution actuelle :
+  - contexte public `enseigne` -> ressource reservable triviale unique
+- cible :
+  - contexte public `enseigne` -> resolution explicite d'un `staff`
 - slots issus de la grille :
   - pas de creneaux arbitraires hors generation systeme
 - pas de paiement actif :
@@ -141,6 +148,7 @@ Le systeme bloque des intervalles reels, pas uniquement des `start_time` :
 
 - `failed` existe deja dans le modele mais pas dans le flux MVP
 - la granularite actuelle par `enseigne` ne couvre pas encore le multi-staff
+- `Bookings::Resource` existe deja comme abstraction de transition vers cette future granularite
 - l'arrivee de disponibilites depuis un CRM devra preserver ou revisiter explicitement les invariants actuels
 - certains garde-fous de bord passent encore par les points d'entree applicatifs comme `Bookings::Input`
 

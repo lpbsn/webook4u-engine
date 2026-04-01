@@ -14,6 +14,30 @@ class ClientTest < ActiveSupport::TestCase
     assert_includes client.errors[:name], "can't be blank"
   end
 
+  test "name with only spaces is invalid" do
+    client = Client.new(name: "   ", slug: "salon-whitespace")
+
+    assert_not client.valid?
+    assert_includes client.errors[:name], "can't be blank"
+  end
+
+  test "create with whitespace-only name fails at model level with save and save!" do
+    client = Client.new(name: "   ", slug: "salon-whitespace-create")
+
+    assert_equal false, client.save
+    assert_includes client.errors[:name], "can't be blank"
+    assert_raises(ActiveRecord::RecordInvalid) { client.save! }
+  end
+
+  test "update to whitespace-only name fails at model level with save and save!" do
+    client = Client.create!(name: "Salon Update", slug: "salon-update-name")
+
+    client.name = "   "
+    assert_equal false, client.save
+    assert_includes client.errors[:name], "can't be blank"
+    assert_raises(ActiveRecord::RecordInvalid) { client.save! }
+  end
+
   test "slug is required" do
     client = Client.new(name: "Salon C", slug: nil)
     assert_not client.valid?
@@ -48,6 +72,36 @@ class ClientTest < ActiveSupport::TestCase
     assert_raises ActiveRecord::NotNullViolation do
       Client.insert_all!([
         { name: "Salon Sans Slug", slug: nil, created_at: timestamp, updated_at: timestamp }
+      ])
+    end
+  end
+
+  test "database enforces non null name" do
+    timestamp = Time.current
+
+    assert_raises ActiveRecord::NotNullViolation do
+      Client.insert_all!([
+        { name: nil, slug: "client-name-null", created_at: timestamp, updated_at: timestamp }
+      ])
+    end
+  end
+
+  test "database rejects blank name" do
+    timestamp = Time.current
+
+    assert_raises ActiveRecord::StatementInvalid do
+      Client.insert_all!([
+        { name: "", slug: "client-name-blank", created_at: timestamp, updated_at: timestamp }
+      ])
+    end
+  end
+
+  test "database rejects whitespace-only name" do
+    timestamp = Time.current
+
+    assert_raises ActiveRecord::StatementInvalid do
+      Client.insert_all!([
+        { name: "   ", slug: "client-name-space", created_at: timestamp, updated_at: timestamp }
       ])
     end
   end

@@ -74,6 +74,13 @@ La disponibilite est calculee comme :
 - grille systeme generee
 - moins les creneaux dont l'intervalle overlap un booking bloquant
 
+### Resolution des horaires
+
+- pour un jour donne, si une enseigne a au moins une plage dans `enseigne_opening_hours`, ces horaires ont priorite totale pour ce jour
+- dans ce cas, `client_opening_hours` est ignore pour le jour concerne
+- `client_opening_hours` ne sert de fallback que lorsqu'aucune plage `enseigne_opening_hours` n'existe pour le jour demande
+- il n'existe pas de fallback partiel ni de fusion entre horaires `client` et `enseigne` pour un meme jour
+
 ### Booking bloquant
 
 Un booking est bloquant si :

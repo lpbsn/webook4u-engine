@@ -70,7 +70,11 @@ Par defaut, `config/database.yml` utilise PostgreSQL local avec l'utilisateur sy
 
 PostgreSQL doit donc etre demarre et accessible en local, sauf configuration specifique via `DATABASE_URL`.
 
-Le projet utilise `db/structure.sql` pour porter certains invariants PostgreSQL avancés qui ne tiennent pas correctement dans `schema.rb`, notamment le trigger de coherence cross-table sur `bookings`.
+Le projet utilise `db/structure.sql` comme source de verite operationnelle du schema PostgreSQL.
+
+`db/schema.rb` reste present comme artefact Rails utile pour une lecture rapide simple, mais il ne doit pas servir de reference pour les invariants PostgreSQL avances du projet.
+
+Toute analyse DB serieuse, revue de migration, ou validation d'invariant doit partir de `db/structure.sql`.
 
 ## Tests
 
@@ -133,4 +137,5 @@ Hors perimetre actuel :
 Regles metier actuelles :
 
 - les prestations sont partagees entre toutes les enseignes d'un meme client
-- les horaires au niveau `client` sont un fallback transitoire avant un fonctionnement 100% par `enseigne`
+- pour un jour donne, si une enseigne a au moins une plage dans `enseigne_opening_hours`, ces horaires remplacent totalement le fallback `client` pour ce jour
+- les horaires `client` ne servent de fallback que lorsqu'aucune plage `enseigne` n'existe pour le jour demande

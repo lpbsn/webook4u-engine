@@ -46,6 +46,8 @@ En pratique :
 - les migrations modifient la base
 - Rails genere ensuite `db/structure.sql`
 - lors du bootstrap standard, la base est reconstruite avec la structure SQL reelle
+- `db/schema.rb` reste present comme artefact Rails secondaire pour une lecture simple, mais ne doit pas servir de base de decision pour les invariants avances
+- toute analyse DB serieuse, revue de migration, ou validation d'invariant doit partir de `db/structure.sql`
 
 Ce point est important : la base ne repose plus uniquement sur une representation Ruby abstraite du schema.
 
@@ -195,7 +197,7 @@ Role :
 
 Statut dans le domaine actuel :
 
-- sert encore de fallback transitoire
+- sert de fallback uniquement lorsqu'aucune plage `enseigne_opening_hours` n'existe pour le jour demande
 - la cible produit reste un fonctionnement pilote a terme par `enseigne`
 
 ### `enseigne_opening_hours`
@@ -206,7 +208,8 @@ Role :
 
 Statut dans le domaine actuel :
 
-- represente la direction cible du produit pour la disponibilite
+- represente la source prioritaire de disponibilite pour le jour concerne
+- pour un jour donne, si une enseigne a au moins une plage, ces horaires masquent totalement les horaires `client`
 
 ## 4. Contraintes actuellement portees par la base
 
@@ -352,6 +355,12 @@ Pour les horaires hebdomadaires :
 - la base interdit les doublons exacts et les overlaps sur une meme entite et un meme jour
 - la migration de durcissement ne corrige automatiquement que les doublons exacts
 - les overlaps non triviaux restent bloquants tant qu'ils ne sont pas corriges manuellement
+
+Resolution metier active :
+
+- pour un jour donne, `enseigne_opening_hours` a priorite totale si au moins une plage existe
+- `client_opening_hours` ne sert de fallback que si aucune plage `enseigne_opening_hours` n'existe ce jour-la
+- il n'existe pas de fusion partielle entre horaires `client` et `enseigne` pour un meme jour
 
 ## 7. Architecture actuelle de disponibilite
 

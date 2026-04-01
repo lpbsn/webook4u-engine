@@ -166,10 +166,11 @@ ALTER SEQUENCE public.client_opening_hours_id_seq OWNED BY public.client_opening
 
 CREATE TABLE public.clients (
     id bigint NOT NULL,
-    name character varying,
+    name character varying NOT NULL,
     slug character varying NOT NULL,
     created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL
+    updated_at timestamp(6) without time zone NOT NULL,
+    CONSTRAINT clients_name_not_blank CHECK ((NULLIF(btrim((name)::text), ''::text) IS NOT NULL))
 );
 
 
@@ -604,6 +605,7 @@ ALTER TABLE ONLY public.bookings
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260402030000'),
 ('20260401150000'),
 ('20260401120000'),
 ('20260325130000'),

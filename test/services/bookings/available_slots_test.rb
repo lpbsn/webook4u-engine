@@ -38,7 +38,7 @@ class Bookings::AvailableSlotsTest < ActiveSupport::TestCase
     end
   end
 
-  test "returns slots for a weekday within opening hours" do
+  test "returns the visible slot grid for a weekday within opening hours" do
     travel_to Time.zone.local(2026, 3, 15, 8, 0, 0) do
       monday = Date.new(2026, 3, 16)
 
@@ -107,7 +107,7 @@ class Bookings::AvailableSlotsTest < ActiveSupport::TestCase
     end
   end
 
-  test "excludes confirmed bookings from available slots" do
+  test "hides blocked confirmed intervals from the visible slot grid" do
     travel_to Time.zone.local(2026, 3, 15, 8, 0, 0) do
       monday = Date.new(2026, 3, 16)
 
@@ -133,7 +133,7 @@ class Bookings::AvailableSlotsTest < ActiveSupport::TestCase
     end
   end
 
-  test "excludes active pending bookings from available slots" do
+  test "hides blocked active pending intervals from the visible slot grid" do
     travel_to Time.zone.local(2026, 3, 15, 8, 0, 0) do
       monday = Date.new(2026, 3, 16)
 
@@ -157,7 +157,7 @@ class Bookings::AvailableSlotsTest < ActiveSupport::TestCase
     end
   end
 
-  test "does not exclude expired pending bookings from available slots" do
+  test "keeps expired pending intervals in the visible slot grid" do
     travel_to Time.zone.local(2026, 3, 15, 8, 0, 0) do
       monday = Date.new(2026, 3, 16)
 

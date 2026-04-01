@@ -35,6 +35,8 @@ module Bookings
       date = Input.safe_date(date_param)
 
       slots = if selected_enseigne.present? && selected_service.present? && date.present?
+        # Public page exposes the visible UX grid only. Transactional flows
+        # revalidate reservability through SlotDecision.
         AvailableSlots.new(client: client, enseigne: selected_enseigne, service: selected_service, date: date).call
       else
         []

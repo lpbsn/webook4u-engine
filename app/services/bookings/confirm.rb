@@ -20,7 +20,8 @@ module Bookings
       # temporaire avant l'introduction d'une ressource plus fine à réserver.
       SlotLock.with_lock(resource: resource) do
         decision = slot_decision(resource: resource)
-        return failure(decision.error_code) unless decision.bookable?
+        decision_failure_code = failure_code_for(decision)
+        return failure(decision_failure_code) if decision_failure_code.present?
 
         booking.update!(
           confirmation_token: SecureRandom.uuid,
@@ -53,6 +54,12 @@ module Bookings
         exclude_booking_id: booking.id,
         resource: resource
       ).call
+    end
+
+    def failure_code_for(decision)
+      return decision.error_code unless decision.bookable?
+
+      nil
     end
 
     def success(booking)

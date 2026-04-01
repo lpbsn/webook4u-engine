@@ -101,6 +101,32 @@ class Bookings::CreatePendingTest < ActiveSupport::TestCase
     end
   end
 
+  test "does not consult AvailableSlots during transactional pending creation" do
+    travel_to Time.zone.local(2026, 3, 15, 8, 0, 0) do
+      slot = Time.zone.local(2026, 3, 16, 10, 0, 0)
+
+      available_slots_singleton = class << Bookings::AvailableSlots; self; end
+      available_slots_singleton.alias_method :new_without_create_pending_available_slots_test, :new
+      available_slots_singleton.define_method(:new) do |*_args, **_kwargs|
+        raise "AvailableSlots should not be called by CreatePending"
+      end
+
+      begin
+        result = Bookings::CreatePending.new(
+          client: @client,
+          enseigne: @enseigne,
+          service: @service,
+          booking_start_time: slot
+        ).call
+
+        assert result.success?
+      ensure
+        available_slots_singleton.alias_method :new, :new_without_create_pending_available_slots_test
+        available_slots_singleton.remove_method :new_without_create_pending_available_slots_test
+      end
+    end
+  end
+
   test "fails when booking_start_time is nil" do
     result = Bookings::CreatePending.new(
       client: @client,

@@ -208,6 +208,87 @@ class Bookings::ConfirmTest < ActiveSupport::TestCase
     end
   end
 
+  test "confirmation delegates slot revalidation to SlotDecision with exclude_booking_id" do
+    travel_to Time.zone.local(2026, 3, 16, 10, 4, 0) do
+      booking = @client.bookings.create!(
+        enseigne: @enseigne,
+        service: @service,
+        booking_start_time: Time.zone.local(2026, 3, 16, 10, 30, 0),
+        booking_end_time: Time.zone.local(2026, 3, 16, 11, 0, 0),
+        booking_status: :pending,
+        booking_expires_at: 1.minute.from_now
+      )
+      calls = []
+
+      slot_decision_singleton = class << Bookings::SlotDecision; self; end
+      slot_decision_singleton.alias_method :new_without_confirm_orchestration_test, :new
+      slot_decision_singleton.define_method(:new) do |**kwargs|
+        calls << kwargs.slice(:client, :enseigne, :service, :booking_start_time, :exclude_booking_id, :resource)
+        new_without_confirm_orchestration_test(**kwargs)
+      end
+
+      begin
+        result = Bookings::Confirm.new(
+          booking: booking,
+          booking_params: {
+            customer_first_name: "Léonard",
+            customer_last_name: "Boisson",
+            customer_email: "leo@example.com"
+          }
+        ).call
+
+        assert result.success?
+        assert_equal 1, calls.size
+
+        call = calls.first
+        assert_equal booking.client, call[:client]
+        assert_equal booking.enseigne, call[:enseigne]
+        assert_equal booking.service, call[:service]
+        assert_equal booking.booking_start_time, call[:booking_start_time]
+        assert_equal booking.id, call[:exclude_booking_id]
+        assert_equal booking.enseigne_id, call[:resource].identifier
+      ensure
+        slot_decision_singleton.alias_method :new, :new_without_confirm_orchestration_test
+        slot_decision_singleton.remove_method :new_without_confirm_orchestration_test
+      end
+    end
+  end
+
+  test "confirmation does not consult AvailableSlots during transactional revalidation" do
+    travel_to Time.zone.local(2026, 3, 16, 10, 4, 0) do
+      booking = @client.bookings.create!(
+        enseigne: @enseigne,
+        service: @service,
+        booking_start_time: Time.zone.local(2026, 3, 16, 10, 30, 0),
+        booking_end_time: Time.zone.local(2026, 3, 16, 11, 0, 0),
+        booking_status: :pending,
+        booking_expires_at: 1.minute.from_now
+      )
+
+      available_slots_singleton = class << Bookings::AvailableSlots; self; end
+      available_slots_singleton.alias_method :new_without_confirm_available_slots_test, :new
+      available_slots_singleton.define_method(:new) do |*_args, **_kwargs|
+        raise "AvailableSlots should not be called by Confirm"
+      end
+
+      begin
+        result = Bookings::Confirm.new(
+          booking: booking,
+          booking_params: {
+            customer_first_name: "Léonard",
+            customer_last_name: "Boisson",
+            customer_email: "leo@example.com"
+          }
+        ).call
+
+        assert result.success?
+      ensure
+        available_slots_singleton.alias_method :new, :new_without_confirm_available_slots_test
+        available_slots_singleton.remove_method :new_without_confirm_available_slots_test
+      end
+    end
+  end
+
   test "confirmation ignores bookings from another enseigne of the same client" do
     travel_to Time.zone.local(2026, 3, 15, 8, 0, 0) do
       slot = Time.zone.local(2026, 3, 16, 13, 30, 0)

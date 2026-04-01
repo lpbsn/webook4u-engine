@@ -1,8 +1,15 @@
 # frozen_string_literal: true
 
 module Bookings
-  # Génère les créneaux disponibles pour une prestation à une date donnée.
-  # Prend en compte : horaires, durée, créneaux réservés, min notice, jours non ouvrés.
+  # Builds the visible booking grid for the public UX on a given day.
+  #
+  # This service answers an interface question: which start times should still
+  # be shown to the user right now?
+  #
+  # It intentionally remains separate from transactional booking validation:
+  # CreatePending and Confirm rely on SlotDecision for business reservability,
+  # while AvailableSlots only produces the currently visible slot list from
+  # schedule intervals, booking window rules and blocking bookings.
   class AvailableSlots
     def initialize(client:, service:, date:, enseigne: nil)
       @client = client
@@ -22,6 +29,8 @@ module Bookings
     attr_reader :client, :service, :date, :enseigne
 
     def slots
+      # Generate the theoretical schedule grid before filtering out slots that
+      # should no longer be shown in the public UX.
       result = []
 
       opening_intervals.each do |(start_of_day, end_of_day)|

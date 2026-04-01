@@ -3,9 +3,6 @@ Rails.application.routes.draw do
 
   get "/:slug", to: "public_clients#show", as: :public_client
 
-  # affichage read-only du formulaire
-  get "/:slug/services/:service_id/bookings/new", to: "bookings#new", as: :new_service_booking
-
   # création explicite du booking pending
   post "/:slug/services/:service_id/bookings", to: "bookings#create_pending", as: :service_bookings
 

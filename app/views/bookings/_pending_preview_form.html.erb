@@ -1,9 +1,0 @@
-<%= form_with url: service_bookings_path(@client.slug, @service), method: :post, local: true do %>
-  <%= hidden_field_tag :enseigne_id, @enseigne.id %>
-  <%= hidden_field_tag :date, @booking_date %>
-  <%= hidden_field_tag :start_time, @booking_start_time.iso8601 %>
-
-  <div class="field">
-    <%= submit_tag "Continuer", class: "btn-primary" %>
-  </div>
-<% end %>

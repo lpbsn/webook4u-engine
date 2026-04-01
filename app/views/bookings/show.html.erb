@@ -20,8 +20,4 @@
   </div>
 <% end %>
 
-<% if @booking.persisted? %>
-  <%= render "confirmation_form" %>
-<% else %>
-  <%= render "pending_preview_form" %>
-<% end %>
+<%= render "confirmation_form" %>

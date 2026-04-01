@@ -1,17 +1,10 @@
 class BookingsController < ApplicationController
   layout "booking"
   before_action :load_client
-  before_action :load_creation_context, only: %i[new create_pending]
+  before_action :load_creation_context, only: %i[create_pending]
   before_action :load_booking_by_pending_access_token, only: %i[create]
   before_action :load_pending_booking_for_show, only: %i[show]
   before_action :load_booking_by_confirmation_token, only: %i[success]
-
-  def new
-    decision = slot_decision
-    return redirect_to_pending_selection(decision.error_message) unless decision.bookable?
-
-    build_pending_booking_preview(decision)
-  end
 
   def create_pending
     result = Bookings::CreatePending.new(
@@ -41,7 +34,7 @@ class BookingsController < ApplicationController
       if result.error_code == Bookings::Errors::FORM_INVALID
         hydrate_booking_view_context
         flash.now[:alert] = result.error_message
-        render :new, status: :unprocessable_entity
+        render :show, status: :unprocessable_entity
       else
         redirect_to public_client_path(
           @client.slug,
@@ -56,7 +49,7 @@ class BookingsController < ApplicationController
 
   def show
     hydrate_booking_view_context
-    render :new
+    render :show
   end
 
   def success
@@ -111,28 +104,6 @@ class BookingsController < ApplicationController
     hydrate_booking_relations
     @booking_start_time = @booking.booking_start_time
     @booking_end_time = @booking.booking_end_time
-  end
-
-  def build_pending_booking_preview(decision)
-    @booking_start_time = decision.booking_start_time
-    @booking_end_time = decision.booking_end_time
-    @booking = Booking.new(
-      client: @client,
-      enseigne: @enseigne,
-      service: @service,
-      booking_start_time: @booking_start_time,
-      booking_end_time: @booking_end_time,
-      booking_status: :pending
-    )
-  end
-
-  def slot_decision
-    @slot_decision ||= Bookings::SlotDecision.new(
-      client: @client,
-      enseigne: @enseigne,
-      service: @service,
-      booking_start_time: @booking_start_time
-    ).call
   end
 
   def redirect_to_pending_selection(message)

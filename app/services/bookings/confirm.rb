@@ -10,8 +10,8 @@ module Bookings
     end
 
     def call
-      return failure(Errors::NOT_PENDING) unless booking.pending?
-      return failure(Errors::SESSION_EXPIRED) if booking.expired?
+      transition = TransitionToConfirmed.evaluate(booking: booking)
+      return failure(transition.error_code) unless transition.allowed?
 
       resource = Resource.for_enseigne(client: booking.client, enseigne: booking.enseigne)
 

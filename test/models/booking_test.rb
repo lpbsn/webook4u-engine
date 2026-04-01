@@ -327,6 +327,35 @@ class BookingTest < ActiveSupport::TestCase
     assert_equal "Léonard Boisson", booking.customer_full_name
   end
 
+  test "booking statuses remain limited to pending confirmed and failed" do
+    assert_equal(
+      {
+        "pending" => "pending",
+        "confirmed" => "confirmed",
+        "failed" => "failed"
+      },
+      Booking.booking_statuses
+    )
+  end
+
+  test "terminal? is true for confirmed bookings" do
+    booking = Booking.new(booking_status: :confirmed)
+
+    assert booking.terminal?
+  end
+
+  test "terminal? is true for failed bookings" do
+    booking = Booking.new(booking_status: :failed)
+
+    assert booking.terminal?
+  end
+
+  test "terminal? is false for pending bookings" do
+    booking = Booking.new(booking_status: :pending)
+
+    assert_not booking.terminal?
+  end
+
   # =========================================================
   # SCOPES
   # =========================================================

@@ -71,8 +71,8 @@ Si le domaine evolue au point de rendre cet invariant insuffisant ou obsolete, i
 ### Invariants futurs a verifier
 
 - un booking payant ne doit pas pouvoir etre `confirmed` sans preuve de paiement attendue
-- si `failed` devient actif, il faut definir exactement ce qu'il signifie
-- `failed` doit-il etre terminal ou recuperable
+- cible de conception actuelle : `failed` pour l'echec du flux paiement, sous reserve de validation finale
+- definir explicitement si `failed` doit etre terminal, et dans quelles limites
 - un booking `confirmed` doit-il exiger un `stripe_payment_intent` ou un `stripe_session_id`
 - un booking non paye peut-il rester `pending`
 - un booking paye mais non confirme est-il possible
@@ -95,7 +95,7 @@ Si le domaine evolue au point de rendre cet invariant insuffisant ou obsolete, i
 
 ### Invariants futurs a verifier
 
-- un booking `failed` doit avoir une cause metier explicite ou non
+- un booking `failed` doit-il porter une cause de paiement explicite ou une trace annexe
 - un booking `failed` peut-il garder un `pending_access_token`
 - un booking `failed` doit-il conserver ou non un `confirmation_token`
 - un booking `failed` bloque-t-il encore un creneau
@@ -237,3 +237,9 @@ En revanche, les prochains composants les plus susceptibles d'imposer de nouveau
 - annulation et replanification
 
 Ce document doit etre traite comme une checklist d'architecture evolutive, pas comme une simple note informative.
+
+Rappel de lecture :
+
+- `failed` ne doit pas etre utilise comme statut fourre-tout pour des erreurs metier ou techniques
+- tant que le paiement n'est pas branche, les erreurs de parcours restent des resultats de service non persistants
+- cette orientation sur `failed` est preparatoire : elle ne vaut pas cloture definitive des transitions de statut

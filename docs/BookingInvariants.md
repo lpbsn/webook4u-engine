@@ -25,7 +25,11 @@ Il couvre :
 
 - un `pending` doit avoir une expiration exploitable.
 - un `confirmed` doit porter les informations client necessaires.
+- un `confirmed` doit etre traite comme un etat terminal dans le flux actuel.
+- `failed` existe deja dans le schema, mais son cycle de vie reste a finaliser lors de l'introduction du paiement.
+- convention actuelle : ne pas utiliser `failed` pour les erreurs metier transitoires du tunnel.
 - un `pending` expire n'est plus confirmable.
+- une erreur de transition metier courante n'est pas requalifiee en `failed` dans le flux actuel.
 
 ## 3. Cohérence cross-table `Booking / Client / Service / Enseigne`
 
@@ -147,13 +151,17 @@ Le systeme bloque des intervalles reels, pas uniquement des `start_time` :
   - pas de creneaux arbitraires hors generation systeme
 - pas de paiement actif :
   - champs Stripe presents mais non utilises dans le flow courant
+- `failed` prepare pour un futur usage paiement :
+  - le statut existe deja
+  - l'orientation actuelle est de ne pas l'utiliser pour les erreurs metier transitoires
+  - les transitions exactes restent a definir avec le design paiement
 - pas de purge des pending expires :
   - l'expiration est logique, pas materialisee par un autre statut
 - pas d'annulation ni de replanification dans le flux courant
 
 ## 7. Zones a surveiller
 
-- `failed` existe deja dans le modele mais pas dans le flux MVP
+- `failed` existe deja dans le modele, mais son activation metier reste un sujet ouvert lie au futur flux paiement
 - la granularite actuelle par `enseigne` ne couvre pas encore le multi-staff
 - `Bookings::Resource` existe deja comme abstraction de transition vers cette future granularite
 - l'arrivee de disponibilites depuis un CRM devra preserver ou revisiter explicitement les invariants actuels

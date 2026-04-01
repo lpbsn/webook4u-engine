@@ -187,7 +187,10 @@ Lecture metier :
 
 - un booking `pending` maintient temporairement un creneau
 - un booking `confirmed` represente une reservation confirmee
-- `failed` existe deja comme valeur de schema mais n'est pas encore exploite dans le flux (en attente de stripe)
+- `failed` existe deja comme valeur de schema
+  - orientation actuelle : futur usage pour un echec paiement persistant
+  - ce cadrage reste preparatoire tant que le flux paiement et ses transitions ne sont pas implementes
+  - il ne doit pas etre lu comme un statut generique d'erreur metier dans le flux actuel
 
 ### `client_opening_hours`
 
@@ -392,6 +395,10 @@ Resolution metier active :
 Le schema actuel est coherent pour le MVP, mais il faut garder en tete plusieurs limites :
 
 - `failed` existe deja dans `bookings`, mais sans usage metier actif
+- sa semantique cible est une intention d'architecture, pas un sujet clos :
+  - orientation actuelle : echec du flux de paiement
+  - les transitions exactes et leur fermeture definitive restent a finaliser au moment d'introduire le paiement
+  - dans l'etat actuel, pas de recyclage pour les erreurs transitoires du tunnel
 - les champs Stripe existent, mais ne pilotent pas encore le cycle de vie
 - la granularite actuelle par `enseigne` ne suffit pas pour le multi-staff
 - la future cible explicite est `bookings.staff_id`, pas un simple compteur de capacite

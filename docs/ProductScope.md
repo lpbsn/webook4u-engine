@@ -122,7 +122,8 @@ Risque :
 Réalité actuelle :
 
 - le cycle de vie actif repose en pratique sur `pending` et `confirmed`
-- `failed` appartient à une étape produit ultérieure
+- `failed` appartient à une étape produit ultérieure liée au paiement
+- les erreurs de réservation actuelles ne doivent pas être persistées sous `failed`
 
 ### La capacité actuelle peut être prise pour le modèle cible
 

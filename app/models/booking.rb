@@ -19,6 +19,10 @@ class Booking < ApplicationRecord
   # =========================================================
   # ENUM MÉTIER
   # =========================================================
+  # Lifecycle boundary:
+  # - pending: temporary hold before finalization
+  # - confirmed: reservation finalized successfully
+  # - failed: reserved for payment-flow failure only
   enum :booking_status, {
     pending: "pending",
     confirmed: "confirmed",
@@ -65,6 +69,10 @@ class Booking < ApplicationRecord
   # =========================================================
   def expired?
     BookingRules.booking_expired?(self)
+  end
+
+  def terminal?
+    confirmed? || failed?
   end
 
   def customer_full_name

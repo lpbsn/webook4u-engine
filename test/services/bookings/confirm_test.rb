@@ -83,6 +83,32 @@ class Bookings::ConfirmTest < ActiveSupport::TestCase
     assert_equal "Cette réservation ne peut plus être confirmée. Veuillez recommencer votre sélection.", result.error_message
   end
 
+  test "fails when booking is already failed" do
+    booking = @client.bookings.create!(
+      enseigne: @enseigne,
+      service: @service,
+      booking_start_time: Time.zone.local(2026, 3, 16, 11, 30, 0),
+      booking_end_time: Time.zone.local(2026, 3, 16, 12, 0, 0),
+      booking_status: :failed
+    )
+
+    result = Bookings::Confirm.new(
+      booking: booking,
+      booking_params: {
+        customer_first_name: "Test",
+        customer_last_name: "User",
+        customer_email: "test@example.com"
+      }
+    ).call
+
+    assert_not result.success?
+    assert_equal booking, result.booking
+    assert_equal Bookings::Errors::NOT_PENDING, result.error_code
+
+    booking.reload
+    assert_equal "failed", booking.booking_status
+  end
+
   test "fails when pending booking is expired" do
     travel_to Time.zone.local(2026, 3, 15, 8, 0, 0) do
       booking = @client.bookings.create!(
@@ -106,6 +132,9 @@ class Bookings::ConfirmTest < ActiveSupport::TestCase
       assert_not result.success?
       assert_equal Bookings::Errors::SESSION_EXPIRED, result.error_code
       assert_equal "Votre session a expiré. Veuillez renouveler votre réservation.", result.error_message
+
+      booking.reload
+      assert_equal "pending", booking.booking_status
     end
   end
 

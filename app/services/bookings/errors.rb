@@ -2,6 +2,8 @@
 
 module Bookings
   module Errors
+    # These codes describe transient booking-flow failures. They are not
+    # persisted booking statuses and must not be mapped to `failed`.
     INVALID_SLOT              = :invalid_slot
     SLOT_UNAVAILABLE          = :slot_unavailable
     SLOT_NOT_BOOKABLE         = :slot_not_bookable

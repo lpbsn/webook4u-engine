@@ -4,6 +4,8 @@
 
 - `BookingRules` centralise les constantes et predicates simples qui cadrent le reservable : pas de 30 minutes, horaires 9h-18h, jours ouvres, minimum notice de 30 minutes, horizon de 30 jours, expiration `pending` de 5 minutes.
 - Le moteur expose une page publique qui calcule des slots theoriques. Quand un utilisateur choisit un creneau, le systeme cree un booking `pending` qui bloque temporairement l'intervalle. La confirmation transforme ce pending en `confirmed` si la session n'a pas expire et si le slot n'est toujours pas bloque.
+- Le cycle de vie courant exploite operationnellement `pending` et `confirmed`.
+- `failed` existe deja dans le schema comme statut preparatoire : l'intention actuelle est de le reserver a un futur flux paiement, mais ce cadrage reste prospectif tant que ce flux et ses transitions ne sont pas implementes.
 
 ## 2. Vue d'ensemble du flux
 
@@ -112,7 +114,11 @@ Comportement controller :
 
 - `pending`
 - `confirmed`
-- `failed` existe dans le modele mais n'est pas exploite dans le flux MVP actuel
+- `failed` existe dans le modele
+  - son usage effectif est reporte a une future conception du flux paiement
+  - la convention actuelle vise a ne pas en faire un statut fourre-tout
+  - il n'est pas utilise par le flux MVP actuel
+  - il ne couvre ni slot indisponible, ni session expiree, ni formulaire invalide
 
 ### Transition active
 
@@ -126,9 +132,26 @@ Comportement controller :
 ### Sortie de `pending`
 
 - soit par confirmation
+- soit, plus tard, possiblement par un futur echec de paiement `pending -> failed` (decision a finaliser avec le design paiement)
 - soit par expiration logique
   - le booking reste `pending` en base
   - il n'est plus bloquant ni confirmable
+
+### Erreurs de transition non persistees
+
+Les erreurs suivantes restent des resultats de service et ne changent pas le statut du booking :
+
+- `INVALID_SLOT`
+- `SLOT_NOT_BOOKABLE`
+- `SLOT_UNAVAILABLE`
+- `PENDING_CREATION_FAILED`
+- `NOT_PENDING`
+- `SESSION_EXPIRED`
+- `FORM_INVALID`
+- `SLOT_TAKEN_DURING_CONFIRM`
+
+Tant qu'aucun flux de paiement actif n'est branche, un echec de transition n'est pas materialise en `failed`.
+Cette ligne de conduite est une convention de l'etape actuelle, pas une fermeture definitive du sujet cycle de vie.
 
 ## 5. Checklist de validation rapide
 

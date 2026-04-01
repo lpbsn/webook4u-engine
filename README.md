@@ -2,6 +2,15 @@
 
 Moteur de reservation Ruby on Rails en cours de construction.
 
+Ce repository doit d'abord se lire comme un projet exploite par un seul developpeur en local.
+
+Le README sert donc de porte d'entree strictement orientee usage solo local :
+
+- comprendre rapidement le perimetre actif
+- lancer l'application en developpement
+- verifier la base et les tests utiles
+- savoir quel fichier DB fait vraiment foi
+
 ## Workflow solo local
 
 Si tu developpes seul en local pour l'instant, concentre-toi sur 3 commandes :
@@ -144,10 +153,8 @@ bin/rails test test/integration/booking_flow_test.rb
 - [docs/BookingFlow.md](/Users/leobsn/Desktop/webook4u-engine/docs/BookingFlow.md) : reference du flux de reservation et du cycle de vie courant
 - [docs/BookingInvariants.md](/Users/leobsn/Desktop/webook4u-engine/docs/BookingInvariants.md) : reference des invariants de domaine, DB et concurrence
 - [docs/DatabaseArchitecture.md](/Users/leobsn/Desktop/webook4u-engine/docs/DatabaseArchitecture.md) : architecture de la base, tables, relations et garde-fous PostgreSQL
-- [docs/ProductScope.md](/Users/leobsn/Desktop/webook4u-engine/docs/ProductScope.md) : cadrage produit/strategie en anglais
-- [docs/ProductScope.fr.md](/Users/leobsn/Desktop/webook4u-engine/docs/ProductScope.fr.md) : cadrage produit/strategie en francais
-- [docs/FutureInvariantsChecklist.md](/Users/leobsn/Desktop/webook4u-engine/docs/FutureInvariantsChecklist.md) : checklist des invariants a revisiter lors des futures evolutions
-- [docs/BookingCrossTableAudit.md](/Users/leobsn/Desktop/webook4u-engine/docs/BookingCrossTableAudit.md) : audit historique de coherence cross-table avant ajout du trigger DB
+- [docs/ProductScope.md](/Users/leobsn/Desktop/webook4u-engine/docs/ProductScope.md) : cadrage produit/strategie courant
+- [docs/FutureInvariantsChecklist.md](/Users/leobsn/Desktop/webook4u-engine/docs/FutureInvariantsChecklist.md) : memo prospectif a relire seulement si le perimetre evolue
 
 ## Base de donnees locale
 
@@ -168,11 +175,13 @@ Important :
 - PostgreSQL `15` et les versions anterieures ne sont pas compatibles avec le `db/structure.sql` courant
 - un client `psql` en version `17.x` ne suffit pas si le serveur local tourne encore en `15`
 
-Le projet utilise `db/structure.sql` comme source de verite operationnelle du schema PostgreSQL.
+Doctrine DB actuelle :
 
-`db/schema.rb` reste present comme artefact Rails utile pour une lecture rapide simple, mais il ne doit pas servir de reference pour les invariants PostgreSQL avances du projet.
+- `db/structure.sql` est la seule reference DB serieuse du projet
+- `db/schema.rb` reste un artefact Rails secondaire, utile pour une lecture rapide, mais pas une base d'analyse ni une source de verite pour les invariants PostgreSQL avances
+- toute analyse DB, revue de migration ou verification d'invariant doit partir de `db/structure.sql`
 
-Toute analyse DB serieuse, revue de migration, ou validation d'invariant doit partir de `db/structure.sql`.
+Si un doute apparait entre les deux fichiers, il faut croire `db/structure.sql`, pas `db/schema.rb`.
 
 ## Verification rapide
 

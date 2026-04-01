@@ -13,10 +13,10 @@ La documentation detaillee a ete decoupee en deux documents :
 
 - lire `BookingFlow` pour comprendre ce que fait le moteur aujourd'hui, et dans quel ordre
 - lire `BookingInvariants` pour comprendre ce que le systeme garantit structurellement
-- lire [docs/FutureInvariantsChecklist.md](/Users/leobsn/Desktop/webook4u-engine/docs/FutureInvariantsChecklist.md) avant d'ajouter un nouveau composant metier
+- pour toute analyse DB serieuse, partir de `db/structure.sql` ; `db/schema.rb` reste un artefact Rails secondaire de lecture simple
+- lire [docs/FutureInvariantsChecklist.md](/Users/leobsn/Desktop/webook4u-engine/docs/FutureInvariantsChecklist.md) seulement si le perimetre courant evolue avec un nouveau composant metier ou une nouvelle source de verite
 
 ## Documents associes
 
-- [docs/BookingCrossTableAudit.md](/Users/leobsn/Desktop/webook4u-engine/docs/BookingCrossTableAudit.md) : audit historique avant ajout de la protection DB cross-table
-- [docs/ProductScope.fr.md](/Users/leobsn/Desktop/webook4u-engine/docs/ProductScope.fr.md) : cadrage produit en francais
-- [docs/ProductScope.md](/Users/leobsn/Desktop/webook4u-engine/docs/ProductScope.md) : cadrage produit en anglais
+- [docs/DatabaseArchitecture.md](/Users/leobsn/Desktop/webook4u-engine/docs/DatabaseArchitecture.md) : lecture SQL et structurelle de la base actuelle
+- [docs/ProductScope.md](/Users/leobsn/Desktop/webook4u-engine/docs/ProductScope.md) : cadrage produit courant

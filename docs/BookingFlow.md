@@ -5,7 +5,7 @@
 - `BookingRules` centralise les constantes et predicates simples qui cadrent le reservable : pas de 30 minutes, horaires 9h-18h, jours ouvres, minimum notice de 30 minutes, horizon de 30 jours, expiration `pending` de 5 minutes.
 - Le moteur expose une page publique qui calcule des slots theoriques. Quand un utilisateur choisit un creneau, le systeme cree un booking `pending` qui bloque temporairement l'intervalle. La confirmation transforme ce pending en `confirmed` si la session n'a pas expire et si le slot n'est toujours pas bloque.
 - Le cycle de vie courant exploite operationnellement `pending` et `confirmed`.
-- `failed` existe deja dans le schema comme statut preparatoire : l'intention actuelle est de le reserver a un futur flux paiement, mais ce cadrage reste prospectif tant que ce flux et ses transitions ne sont pas implementes.
+- `failed` existe deja dans le schema, mais n'appartient pas au flux actif de reservation.
 
 ## 2. Vue d'ensemble du flux
 
@@ -56,8 +56,7 @@ La logique metier centrale reste deleguee aux services `Bookings::CreatePending`
 Note de domaine :
 
 - la disponibilite est aujourd'hui calculee en interne par Webook4u
-- une alimentation externe via CRM pourra exister plus tard selon le client
-- cette variation future ne change pas la structure actuelle du booking
+- cette lecture ne change pas la structure actuelle du booking
 
 ## 3. Regles du flux
 
@@ -73,8 +72,7 @@ Note de domaine :
 - Ce choix est volontairement plus grossier que l'invariant metier d'overlap :
   il serialize aussi des creations/confirmations sur des creneaux independants
   de la meme enseigne.
-- C'est un compromis transitoire pour garder une cle de verrou stable avant
-  l'introduction d'une ressource plus fine comme `staff` ou equivalent.
+- C'est un compromis technique de l'etat actuel pour garder une cle de verrou stable.
 
 ### 3.2 Confirmation d'un booking
 
@@ -116,7 +114,6 @@ Comportement controller :
 - `pending`
 - `confirmed`
 - `failed` existe dans le modele
-  - son usage effectif est reporte a une future conception du flux paiement
   - la convention actuelle vise a ne pas en faire un statut fourre-tout
   - il n'est pas utilise par le flux MVP actuel
   - il ne couvre ni slot indisponible, ni session expiree, ni formulaire invalide
@@ -133,7 +130,6 @@ Comportement controller :
 ### Sortie de `pending`
 
 - soit par confirmation
-- soit, plus tard, possiblement par un futur echec de paiement `pending -> failed` (decision a finaliser avec le design paiement)
 - soit par expiration logique
   - le booking cesse d'etre bloquant et confirmable immediatement
   - un batch periodique peut ensuite le supprimer physiquement
@@ -154,8 +150,7 @@ Les erreurs suivantes restent des resultats de service et ne changent pas le sta
 
 `NOT_PENDING` reste une erreur metier de service utile en interne, mais elle n'est plus exposee comme contrat HTTP du tunnel public lorsqu'un token ne designe pas un `pending` resolvable.
 
-Tant qu'aucun flux de paiement actif n'est branche, un echec de transition n'est pas materialise en `failed`.
-Cette ligne de conduite est une convention de l'etape actuelle, pas une fermeture definitive du sujet cycle de vie.
+Dans le flux courant, un echec de transition n'est pas materialise en `failed`.
 
 ## 5. Checklist de validation rapide
 

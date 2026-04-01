@@ -10,7 +10,7 @@ Ce document explique la base de donnees de Webook4u telle qu'elle fonctionne auj
 - role de la base dans le moteur de reservation
 - limites actuelles du schema
 
-Il decrit l'etat courant du repo, pas une cible long terme.
+Il decrit l'etat courant du repo.
 
 ## 1. Vue d'ensemble
 
@@ -35,6 +35,7 @@ Aujourd'hui, le domaine metier de reservation documente ici vit dans la base pri
 ### Source de verite du schema
 
 Le projet utilise `db/structure.sql` comme source de verite du schema PostgreSQL.
+Pour ce repo, c'est la seule reference DB serieuse.
 
 Ce choix est assume parce que certains invariants avances ne tiennent pas correctement dans `schema.rb`, notamment :
 
@@ -46,7 +47,7 @@ En pratique :
 - les migrations modifient la base
 - Rails genere ensuite `db/structure.sql`
 - lors du bootstrap standard, la base est reconstruite avec la structure SQL reelle
-- `db/schema.rb` reste present comme artefact Rails secondaire pour une lecture simple, mais ne doit pas servir de base de decision pour les invariants avances
+- `db/schema.rb` reste present comme artefact Rails secondaire pour une lecture simple, mais ne doit pas servir de base d'analyse ni de decision pour les invariants PostgreSQL avances
 - toute analyse DB serieuse, revue de migration, ou validation d'invariant doit partir de `db/structure.sql`
 
 Ce point est important : la base ne repose plus uniquement sur une representation Ruby abstraite du schema.
@@ -96,17 +97,8 @@ Elle fixe le cadre MVP courant sans introduire de modele conceptuel plus large.
 
 ### Source de disponibilite
 
-Mode actif aujourd'hui :
-
 - Webook4u calcule la disponibilite a partir des horaires et des bookings connus de l'application
-
-Mode futur possible :
-
-- certains clients pourront imposer leur CRM comme source de verite des disponibilites
-
-Decision importante :
-
-- cette variation future de source ne change pas l'invariant structurel actuel de `Booking`
+- cette lecture ne change pas l'invariant structurel actuel de `Booking`
 - tant qu'un booking reference `client`, `service` et `enseigne`, la coherence cross-table reste une regle forte du domaine
 
 ## 3. Detail des tables
@@ -192,8 +184,7 @@ Lecture metier :
 - le `pending_access_token` d'un pending purge reste reserve par cette retention et n'est pas recyclable
 - un booking `confirmed` represente une reservation confirmee
 - `failed` existe deja comme valeur de schema
-  - orientation actuelle : futur usage pour un echec paiement persistant
-  - ce cadrage reste preparatoire tant que le flux paiement et ses transitions ne sont pas implementes
+  - il n'appartient pas au flux actif de reservation
   - il ne doit pas etre lu comme un statut generique d'erreur metier dans le flux actuel
 
 ### `expired_booking_links`
@@ -226,7 +217,6 @@ Role :
 Statut dans le domaine actuel :
 
 - sert de fallback uniquement lorsqu'aucune plage `enseigne_opening_hours` n'existe pour le jour demande
-- la cible produit reste un fonctionnement pilote a terme par `enseigne`
 
 ### `enseigne_opening_hours`
 
@@ -411,12 +401,6 @@ Resolution metier active :
 - la capacite actuelle correspond implicitement a `1 staff` par enseigne a un instant donne
 - le code applicatif prepare deja une notion de ressource reservable, mais cette ressource est encore resolue trivialement depuis l'enseigne
 
-### Variation future deja anticipee
-
-- certains clients pourront utiliser leur CRM comme source de verite des disponibilites
-- ce changement futur modifie la source des creneaux, pas la definition actuelle de `Booking`
-- il ne remet pas en cause l'invariant cross-table `Booking / Client / Service / Enseigne`
-
 ### Ce que la base ne modele pas encore
 
 - plusieurs staffs sur un meme creneau
@@ -430,13 +414,9 @@ Resolution metier active :
 Le schema actuel est coherent pour le MVP, mais il faut garder en tete plusieurs limites :
 
 - `failed` existe deja dans `bookings`, mais sans usage metier actif
-- sa semantique cible est une intention d'architecture, pas un sujet clos :
-  - orientation actuelle : echec du flux de paiement
-  - les transitions exactes et leur fermeture definitive restent a finaliser au moment d'introduire le paiement
-  - dans l'etat actuel, pas de recyclage pour les erreurs transitoires du tunnel
+- dans l'etat actuel, pas de recyclage pour les erreurs transitoires du tunnel
 - les champs Stripe existent, mais ne pilotent pas encore le cycle de vie
 - la granularite actuelle par `enseigne` ne suffit pas pour le multi-staff
-- la future cible explicite est `bookings.staff_id`, pas un simple compteur de capacite
 - la disponibilite externe via CRM n'est pas encore modelisee
 - l'expiration des `pending` est logique, pas materialisee par un autre statut
 
@@ -452,7 +432,6 @@ La bonne lecture architecture est la suivante :
   - contexte de disponibilite concret
 - `bookings` :
   - aujourd'hui attaches a un contexte `enseigne`
-  - demain attaches a ce contexte plus une ressource explicite de type `staff`
   - verite de reservation
 - `*_opening_hours` :
   - support de calcul de disponibilite
@@ -464,6 +443,6 @@ Elle porte deja une partie importante de la verite metier du moteur.
 
 - [docs/BookingFlow.md](/Users/leobsn/Desktop/webook4u-engine/docs/BookingFlow.md)
 - [docs/BookingInvariants.md](/Users/leobsn/Desktop/webook4u-engine/docs/BookingInvariants.md)
-- [docs/FutureInvariantsChecklist.md](/Users/leobsn/Desktop/webook4u-engine/docs/FutureInvariantsChecklist.md)
-- [docs/BookingCrossTableAudit.md](/Users/leobsn/Desktop/webook4u-engine/docs/BookingCrossTableAudit.md)
+- [docs/FutureInvariantsChecklist.md](/Users/leobsn/Desktop/webook4u-engine/docs/FutureInvariantsChecklist.md) : memo prospectif a consulter seulement si le perimetre evolue
+- [docs/BookingRules.md](/Users/leobsn/Desktop/webook4u-engine/docs/BookingRules.md)
 - [README.md](/Users/leobsn/Desktop/webook4u-engine/README.md)

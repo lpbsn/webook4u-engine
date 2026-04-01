@@ -4,7 +4,7 @@
 
 Ce document définit le périmètre produit actuel de Webook4u avec une lecture produit et stratégique.
 
-Son rôle est de garder un cadre clair sur le produit, d’éviter les faux signaux produit, et d’aligner l’équipe sur ce que le produit est aujourd’hui, ce qu’il n’est pas encore, et ce qu’il prépare pour la suite.
+Son rôle est de garder un cadre clair sur le produit, d’eviter les faux signaux produit, et d’aligner l’equipe sur ce que le produit est aujourd’hui.
 
 ## Intention produit
 
@@ -51,7 +51,6 @@ Webook4U repose actuellement sur les hypothèses suivantes :
 
 - les prestations sont partagées entre toutes les enseignes d’un même client
 - les horaires peuvent encore venir du niveau `client` comme fallback temporaire
-- la cible produit reste un modèle de disponibilité piloté par `enseigne`
 - la disponibilité est aujourd’hui calculée par Webook4u à partir des horaires et des réservations connues
 - chaque enseigne est aujourd’hui traitée comme si elle ne disposait que d’une seule capacité de réservation à un instant donné
 
@@ -60,8 +59,7 @@ Ce dernier point est important :
 - un créneau correspond actuellement à une seule capacité disponible par enseigne
 - le système ne modélise pas encore plusieurs membres du staff disponibles sur le même créneau
 
-Cette simplification est volontaire pour l'instant.
-Elle n’est pas le modèle cible du produit.
+Cette simplification est volontaire dans l'etat actuel du produit.
 
 ## Ce que le produit ne promet pas encore
 
@@ -78,7 +76,7 @@ Le produit ne promet pas encore :
 - la gestion de plusieurs staffs disponibles sur un même créneau
 - l’ingestion de créneaux directement depuis le CRM du client
 
-Ces sujets appartiennent à la suite du produit, pas au périmètre actif
+Ces sujets n'appartiennent pas au périmètre actif
 
 ## Principaux risques de mauvaise interprétation produit
 
@@ -104,11 +102,11 @@ Le modèle de données contient déjà des champs liés à Stripe.
 Risque :
 
 - l’équipe peut croire que Stripe fait déjà partie du flux produit
-- la roadmap peut paraître plus avancée qu’elle ne l’est réellement
+- le périmètre livré peut paraître plus avancé qu’il ne l’est réellement
 
 Réalité actuelle :
 
-- ces champs sont des réserves pour une phase ultérieure
+- ces champs sont des réserves de schéma sans rôle actif aujourd'hui
 - ils ne participent pas au flux actif
 
 ### Le statut `failed` peut faire croire à un cycle de vie déjà complet
@@ -122,23 +120,22 @@ Risque :
 Réalité actuelle :
 
 - le cycle de vie actif repose en pratique sur `pending` et `confirmed`
-- `failed` appartient à une étape produit ultérieure liée au paiement
+- `failed` n'appartient pas au flux utilisateur actif
 - les erreurs de réservation actuelles ne doivent pas être persistées sous `failed`
 
-### La capacité actuelle peut être prise pour le modèle cible
+### La capacité actuelle peut être prise pour le modèle métier définitif
 
 Le moteur actuel se comporte comme si une enseigne ne pouvait absorber qu’une seule réservation à la fois sur un créneau donné.
 
 Risque :
 
-- l’implémentation actuelle peut être prise pour le vrai modèle métier cible
+- l’implémentation actuelle peut être prise pour le vrai modèle métier
 - certaines décisions peuvent être prises comme si l’unicité d’un créneau par enseigne était une règle définitive
 
 Réalité actuelle :
 
 - c’est une simplification pour stabiliser le moteur de réservation
-- à terme, le produit devra intégrer la notion de staff disponible
-- un même créneau pourra exister plusieurs fois si plusieurs staffs sont disponibles dans la même enseigne
+- elle ne doit pas être lue comme une preuve que l’unicité par enseigne est la règle métier définitive
 
 ### Le calcul interne des créneaux peut être pris pour la source définitive des disponibilités
 
@@ -151,10 +148,7 @@ Risque :
 Réalité actuelle :
 
 - aujourd’hui, Webook4u reste le mode actif de calcul de disponibilité
-- à terme, les créneaux pourront aussi être reçus directement depuis le CRM du client
-- certains clients pourront conserver le mode interne, d’autres imposer une source CRM
-- le moteur doit donc être pensé comme un système capable d’intégrer des disponibilités externes, et pas seulement de les générer en interne
-- cette future variation de source ne change pas l’invariant cross-table actuel de `Booking`
+- cette lecture ne change pas l’invariant cross-table actuel de `Booking`
 
 ## Narration produit correcte
 
@@ -169,32 +163,14 @@ La bonne manière de décrire le produit aujourd’hui est :
 - les horaires au niveau `client` sont un fallback transitoire
 - la disponibilité est actuellement calculée en interne par Webook4u
 - la capacité actuelle est volontairement simplifiée à un staff implicite par enseigne
-- les disponibilités pourront plus tard venir aussi de systèmes externes comme les CRM clients
 
-## Direction stratégique
+## Garde-fous de lecture
 
-Le prochain palier produit utile n’est pas une grande refonte.
-La bonne direction est de solidifier le cœur de réservation actuel tout en gardant le modèle futur ouvert.
+Ces points servent seulement à éviter les mauvaises lectures du repo :
 
-La stratégie doit être :
-
-- fiabiliser le moteur actuel de réservation
-- réduire les faux signaux dans le wording et la communication produit
-- clarifier partout la promesse réelle du produit
-- garder le domaine prêt pour la future notion de capacité / staff
-- garder le domaine prêt pour l’intégration future de disponibilités externes
-- n’ajouter le paiement qu’après cette stabilisation
-
-## Trajectoire d’évolution produit
-
-La trajectoire la plus logique est :
-
-1. stabiliser le flux public de réservation et de confirmation
-2. supprimer les ambiguïtés de wording produit
-3. clarifier le domaine autour des enseignes et de la disponibilité
-4. préparer la prise en compte de capacités multiples / multi-staff
-5. préparer l’ingestion de créneaux depuis les CRM clients
-6. ajouter le paiement et les états d’échec associés
+- ne pas déduire un paiement actif de l’affichage du prix, des champs Stripe ou du statut `failed`
+- ne pas déduire un modèle multi-staff actif de la structure actuelle
+- ne pas projeter une source externe de disponibilités dans le fonctionnement courant tant qu’elle n’est pas implementee
 
 ## Résumé
 
@@ -203,8 +179,6 @@ Webook4u est aujourd’hui un moteur de réservation avec une promesse volontair
 - trouver un créneau
 - le maintenir brièvement
 - confirmer une réservation
-
-Le produit actuel est volontairement plus simple que le modèle cible.
 
 Il ne couvre pas encore :
 

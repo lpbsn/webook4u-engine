@@ -2,9 +2,9 @@
 
 ## Objectif du document
 
-Ce document sert de memo de conception.
+Ce document sert de memo prospectif de conception.
 
-Il liste les invariants de base de donnees et de domaine qui ne sont pas encore necessaires pour le MVP actuel, mais qui devront etre explicitement revisites lors de l'ajout de nouveaux composants metier.
+Il liste les invariants de base de donnees et de domaine qui ne sont pas necessaires pour comprendre ou maintenir le systeme courant, mais qui devront etre explicitement revisites si le perimetre produit evolue.
 
 Le but est simple :
 
@@ -12,13 +12,16 @@ Le but est simple :
 - eviter d'ajouter un nouveau composant sans revoir les contraintes de verite en base
 - garder `Booking` et la disponibilite coherents quand le moteur changera de dimension
 
+Ce document n'est pas une reference de fonctionnement courant.
+Il ne doit pas etre lu comme un prerequis standard pour comprendre le moteur actuel.
+
 ## Regle de travail
 
 A chaque ajout d'un composant produit majeur, se poser cette question :
 
 > est-ce que ce composant introduit un nouvel etat metier, une nouvelle source de verite, une nouvelle capacite, ou une nouvelle relation de dependance qui doit etre protegee au niveau DB ?
 
-Si la reponse est oui, ce document doit etre relu avant implementation finale.
+Si la reponse est oui, ce document peut servir de garde-fou avant implementation finale.
 
 ## Etat actuel
 
@@ -236,7 +239,7 @@ En revanche, les prochains composants les plus susceptibles d'imposer de nouveau
 - exceptions horaires
 - annulation et replanification
 
-Ce document doit etre traite comme une checklist d'architecture evolutive, pas comme une simple note informative.
+Ce document doit etre traite comme une checklist d'architecture evolutive, pas comme une reference du systeme courant.
 
 Rappel de lecture :
 

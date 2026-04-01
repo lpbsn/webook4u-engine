@@ -29,7 +29,7 @@ Il couvre :
 - un `pending` doit avoir une expiration exploitable.
 - un `confirmed` doit porter les informations client necessaires.
 - un `confirmed` doit etre traite comme un etat terminal dans le flux actuel.
-- `failed` existe deja dans le schema, mais son cycle de vie reste a finaliser lors de l'introduction du paiement.
+- `failed` existe deja dans le schema, mais n'appartient pas au flux actif de reservation.
 - convention actuelle : ne pas utiliser `failed` pour les erreurs metier transitoires du tunnel.
 - un `pending` expire n'est plus confirmable.
 - une erreur de transition metier courante n'est pas requalifiee en `failed` dans le flux actuel.
@@ -56,21 +56,26 @@ Effet :
 ### Portabilite de la protection
 
 - la fonction SQL et le trigger sont portes par `db/structure.sql`
+- pour toute lecture DB serieuse de ces protections, `db/structure.sql` est la seule reference fiable
+- `db/schema.rb` peut aider a lire rapidement le schema Rails, mais n'est pas decisionnel pour ces invariants PostgreSQL
 - cet invariant ne doit plus etre lu comme une simple validation applicative
 - il fait partie du socle structurel courant du projet
-- une future source CRM des disponibilites ne change pas cet invariant
+- cet invariant ne depend pas de la maniere dont la disponibilite est calculee aujourd'hui
 - tant que `Booking` reference `client`, `service` et `enseigne`, la coherence cross-table reste une regle forte du domaine
 
 ### References de validation
 
-- audit prealable :
-  - [docs/BookingCrossTableAudit.md](/Users/leobsn/Desktop/webook4u-engine/docs/BookingCrossTableAudit.md)
 - tests DB directs :
   - `test/models/booking_test.rb`
 - test d'infrastructure :
   - `test/models/bookings_cross_table_trigger_infrastructure_test.rb`
 - test de migration :
   - `test/models/add_bookings_client_consistency_trigger_migration_test.rb`
+
+Contexte documentaire utile :
+
+- [docs/DatabaseArchitecture.md](/Users/leobsn/Desktop/webook4u-engine/docs/DatabaseArchitecture.md)
+- [docs/BookingFlow.md](/Users/leobsn/Desktop/webook4u-engine/docs/BookingFlow.md)
 
 ## 4. Disponibilite et blocage des creneaux
 
@@ -121,17 +126,12 @@ Le systeme bloque des intervalles reels, pas uniquement des `start_time` :
 - effet :
   - deux operations sur des creneaux differents de la meme enseigne ne passent pas en parallele
   - le throughput intra-enseigne est donc plus faible que la granularite metier reelle
-- ce verrou ne doit pas etre lu comme l'invariant final du domaine
-- evolution cible :
-  - conserver l'invariant metier d'overlap par intervalle
-  - deplacer plus tard la cle de verrou vers un `staff`
-  - faire de `staff` la ressource reservable explicite du domaine
+- ce verrou ne doit pas etre confondu avec la regle metier de blocage par intervalle
 
 ### Garde-fou d'unicite
 
 - la base interdit deux bookings `confirmed` dont les intervalles overlapent sur une meme enseigne
-- cette protection DB reste un garde-fou MVP, pas la granularite cible long terme
-- la cible future est une protection d'overlap sur `staff_id + intervalle`
+- cette protection DB est le garde-fou structurel actif du projet aujourd'hui
 
 ### Portee de la garantie
 
@@ -149,16 +149,13 @@ Le systeme bloque des intervalles reels, pas uniquement des `start_time` :
   - 1 staff implicite par `enseigne`
 - resolution actuelle :
   - contexte public `enseigne` -> ressource reservable triviale unique
-- cible :
-  - contexte public `enseigne` -> resolution explicite d'un `staff`
 - slots issus de la grille :
   - pas de creneaux arbitraires hors generation systeme
 - pas de paiement actif :
   - champs Stripe presents mais non utilises dans le flow courant
-- `failed` prepare pour un futur usage paiement :
+- `failed` hors flux actif :
   - le statut existe deja
-  - l'orientation actuelle est de ne pas l'utiliser pour les erreurs metier transitoires
-  - les transitions exactes restent a definir avec le design paiement
+  - il ne doit pas etre utilise pour les erreurs metier transitoires du tunnel
 - purge periodique des pending expires :
   - l'expiration reste logique immediatement
   - la suppression physique se fait ensuite par batch
@@ -169,13 +166,12 @@ Le systeme bloque des intervalles reels, pas uniquement des `start_time` :
 
 ## 7. Zones a surveiller
 
-- `failed` existe deja dans le modele, mais son activation metier reste un sujet ouvert lie au futur flux paiement
-- la granularite actuelle par `enseigne` ne couvre pas encore le multi-staff
-- `Bookings::Resource` existe deja comme abstraction de transition vers cette future granularite
-- l'arrivee de disponibilites depuis un CRM devra preserver ou revisiter explicitement les invariants actuels
+- `failed` existe deja dans le modele, mais ne doit pas etre recycle pour les erreurs courantes du tunnel
+- la granularite actuelle par `enseigne` ne prouve pas qu'il s'agit deja de la ressource metier definitive
+- `Bookings::Resource` existe deja dans le code, sans signifier qu'un modele staff actif est deja en place
 - certains garde-fous de bord passent encore par les points d'entree applicatifs comme `Bookings::Input`
 
 ## 8. Suite logique
 
 - lire [docs/BookingFlow.md](/Users/leobsn/Desktop/webook4u-engine/docs/BookingFlow.md) pour le comportement courant
-- lire [docs/FutureInvariantsChecklist.md](/Users/leobsn/Desktop/webook4u-engine/docs/FutureInvariantsChecklist.md) avant tout ajout de paiement, CRM, multi-staff, annulation ou reschedule
+- lire [docs/FutureInvariantsChecklist.md](/Users/leobsn/Desktop/webook4u-engine/docs/FutureInvariantsChecklist.md) seulement comme memo prospectif si le perimetre courant evolue vers paiement, CRM, multi-staff, annulation ou reschedule

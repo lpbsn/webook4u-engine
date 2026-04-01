@@ -17,8 +17,8 @@ module Bookings
 
       resource = Resource.for_enseigne(client: client, enseigne: enseigne)
       decision = slot_decision(resource: resource)
-      return failure(decision.error_code) unless decision.bookable?
-      return failure(Errors::SLOT_NOT_BOOKABLE) unless decision.creatable?
+      decision_failure_code = failure_code_for(decision)
+      return failure(decision_failure_code) if decision_failure_code.present?
 
       booking = nil
 
@@ -28,8 +28,8 @@ module Bookings
       # d'une même enseigne.
       SlotLock.with_lock(resource: resource) do
         locked_decision = slot_decision(resource: resource)
-        return failure(locked_decision.error_code) unless locked_decision.bookable?
-        return failure(Errors::SLOT_NOT_BOOKABLE) unless locked_decision.creatable?
+        locked_decision_failure_code = failure_code_for(locked_decision)
+        return failure(locked_decision_failure_code) if locked_decision_failure_code.present?
 
         booking = Booking.create!(
           client: client,
@@ -71,6 +71,13 @@ module Bookings
         booking_start_time: booking_start_time,
         resource: resource
       ).call
+    end
+
+    def failure_code_for(decision)
+      return decision.error_code unless decision.bookable?
+      return Errors::SLOT_NOT_BOOKABLE unless decision.creatable?
+
+      nil
     end
 
     def success(booking)

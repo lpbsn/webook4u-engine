@@ -61,6 +61,46 @@ class Bookings::CreatePendingTest < ActiveSupport::TestCase
     end
   end
 
+  test "reuses SlotDecision before and after lock with the same booking context" do
+    travel_to Time.zone.local(2026, 3, 15, 8, 0, 0) do
+      slot = Time.zone.local(2026, 3, 16, 11, 30, 0)
+      calls = []
+
+      slot_decision_singleton = class << Bookings::SlotDecision; self; end
+      slot_decision_singleton.alias_method :new_without_create_pending_orchestration_test, :new
+      slot_decision_singleton.define_method(:new) do |**kwargs|
+        calls << kwargs.slice(:client, :enseigne, :service, :booking_start_time, :resource)
+        new_without_create_pending_orchestration_test(**kwargs)
+      end
+
+      begin
+        result = Bookings::CreatePending.new(
+          client: @client,
+          enseigne: @enseigne,
+          service: @service,
+          booking_start_time: slot
+        ).call
+
+        assert result.success?
+        assert_equal 2, calls.size
+
+        first_call = calls.first
+        second_call = calls.second
+
+        assert_equal @client, first_call[:client]
+        assert_equal @enseigne, first_call[:enseigne]
+        assert_equal @service, first_call[:service]
+        assert_equal slot, first_call[:booking_start_time]
+        assert_equal first_call.except(:resource), second_call.except(:resource)
+        assert_equal @enseigne.id, first_call[:resource].identifier
+        assert_equal @enseigne.id, second_call[:resource].identifier
+      ensure
+        slot_decision_singleton.alias_method :new, :new_without_create_pending_orchestration_test
+        slot_decision_singleton.remove_method :new_without_create_pending_orchestration_test
+      end
+    end
+  end
+
   test "fails when booking_start_time is nil" do
     result = Bookings::CreatePending.new(
       client: @client,

@@ -32,3 +32,9 @@ module ActiveSupport
     end
   end
 end
+
+# Migration tests that call migration.up/down mutate the shared schema and must
+# not run inside the normal parallel test workers.
+class SchemaMutationMigrationTestCase < ActiveSupport::TestCase
+  include ActiveSupport::Testing::Isolation
+end

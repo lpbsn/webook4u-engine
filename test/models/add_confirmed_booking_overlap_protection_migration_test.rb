@@ -1,7 +1,7 @@
 require "test_helper"
 require Rails.root.join("db/migrate/20260401120000_add_confirmed_booking_overlap_protection")
 
-class AddConfirmedBookingOverlapProtectionMigrationTest < ActiveSupport::TestCase
+class AddConfirmedBookingOverlapProtectionMigrationTest < SchemaMutationMigrationTestCase
   test "migration fails explicitly when overlapping confirmed bookings already exist" do
     migration = AddConfirmedBookingOverlapProtection.new
     migration.down

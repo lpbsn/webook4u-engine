@@ -1,7 +1,7 @@
 require "test_helper"
 require Rails.root.join("db/migrate/20260401150000_harden_opening_hours_constraints")
 
-class HardenOpeningHoursConstraintsMigrationTest < ActiveSupport::TestCase
+class HardenOpeningHoursConstraintsMigrationTest < SchemaMutationMigrationTestCase
   def setup
     @migration = HardenOpeningHoursConstraints.new
   end

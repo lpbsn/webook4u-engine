@@ -1,7 +1,7 @@
 require "test_helper"
 require Rails.root.join("db/migrate/20260402060100_enforce_global_pending_access_token_uniqueness")
 
-class EnforceGlobalPendingAccessTokenUniquenessMigrationTest < ActiveSupport::TestCase
+class EnforceGlobalPendingAccessTokenUniquenessMigrationTest < SchemaMutationMigrationTestCase
   test "migration fails explicitly when a booking token collides with expired booking links" do
     migration = EnforceGlobalPendingAccessTokenUniqueness.new
     migration.down

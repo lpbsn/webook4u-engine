@@ -1,7 +1,7 @@
 require "test_helper"
 require Rails.root.join("db/migrate/20260325123000_add_status_based_required_field_checks_to_bookings")
 
-class AddStatusBasedRequiredFieldChecksToBookingsMigrationTest < ActiveSupport::TestCase
+class AddStatusBasedRequiredFieldChecksToBookingsMigrationTest < SchemaMutationMigrationTestCase
   test "fails when confirmed booking has missing customer fields and does not alter data" do
     drop_confirmed_required_constraints!
 

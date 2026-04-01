@@ -1,7 +1,7 @@
 require "test_helper"
 require Rails.root.join("db/migrate/20260325130000_add_bookings_client_consistency_trigger")
 
-class AddBookingsClientConsistencyTriggerMigrationTest < ActiveSupport::TestCase
+class AddBookingsClientConsistencyTriggerMigrationTest < SchemaMutationMigrationTestCase
   test "migration fails explicitly when inconsistent bookings already exist" do
     migration = AddBookingsClientConsistencyTrigger.new
     migration.down

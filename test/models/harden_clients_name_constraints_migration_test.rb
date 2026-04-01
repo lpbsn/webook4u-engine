@@ -1,6 +1,7 @@
+require "test_helper"
 require Rails.root.join("db/migrate/20260402030000_harden_clients_name_constraints")
 
-class HardenClientsNameConstraintsMigrationTest < ActiveSupport::TestCase
+class HardenClientsNameConstraintsMigrationTest < SchemaMutationMigrationTestCase
   def setup
     @migration = HardenClientsNameConstraints.new
   end

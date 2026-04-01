@@ -2,6 +2,31 @@
 
 Moteur de reservation Ruby on Rails en cours de construction.
 
+## Workflow solo local
+
+Si tu developpes seul en local pour l'instant, concentre-toi sur 3 commandes :
+
+```bash
+bin/setup --skip-server
+bin/dev
+bin/check
+```
+
+Elles couvrent l'essentiel :
+
+- installer et preparer le projet localement
+- lancer l'application en developpement
+- verifier rapidement que la suite de tests Rails passe
+
+Pour l'instant, tu peux ignorer :
+
+- Docker
+- Kamal / deploy
+- CI
+- production
+
+Ce repo conserve ces elements pour plus tard, mais ils ne sont pas necessaires a ton usage quotidien local.
+
 ## Versions figees
 
 - Ruby `3.4.9`
@@ -17,17 +42,52 @@ bundle -v
 psql --version
 ```
 
-## Documentation
+## Demarrage rapide
 
-- [README.md](/Users/leobsn/Desktop/webook4u-engine/README.md) : point d'entree setup, base locale, tests et perimetre courant
-- [docs/BookingRules.md](/Users/leobsn/Desktop/webook4u-engine/docs/BookingRules.md) : point d'entree technique vers la documentation de reservation
-- [docs/BookingFlow.md](/Users/leobsn/Desktop/webook4u-engine/docs/BookingFlow.md) : reference du flux de reservation et du cycle de vie courant
-- [docs/BookingInvariants.md](/Users/leobsn/Desktop/webook4u-engine/docs/BookingInvariants.md) : reference des invariants de domaine, DB et concurrence
-- [docs/DatabaseArchitecture.md](/Users/leobsn/Desktop/webook4u-engine/docs/DatabaseArchitecture.md) : architecture de la base, tables, relations et garde-fous PostgreSQL
-- [docs/ProductScope.md](/Users/leobsn/Desktop/webook4u-engine/docs/ProductScope.md) : cadrage produit/strategie en anglais
-- [docs/ProductScope.fr.md](/Users/leobsn/Desktop/webook4u-engine/docs/ProductScope.fr.md) : cadrage produit/strategie en francais
-- [docs/FutureInvariantsChecklist.md](/Users/leobsn/Desktop/webook4u-engine/docs/FutureInvariantsChecklist.md) : checklist des invariants a revisiter lors des futures evolutions
-- [docs/BookingCrossTableAudit.md](/Users/leobsn/Desktop/webook4u-engine/docs/BookingCrossTableAudit.md) : audit historique de coherence cross-table avant ajout du trigger DB
+Prerequis locaux reels :
+
+- Ruby `3.4.9`
+- Bundler `2.7.2`
+- PostgreSQL local accessible
+
+Premier bootstrap local :
+
+```bash
+bundle install
+bin/setup --skip-server
+```
+
+Demarrage quotidien :
+
+```bash
+bin/dev
+```
+
+Validation minimale avant un changement sensible :
+
+```bash
+bin/check
+```
+
+Equivalent explicite :
+
+```bash
+bin/rails test
+```
+
+Reset exceptionnel de la base locale :
+
+```bash
+bin/setup --reset --skip-server
+```
+
+## Usage quotidien
+
+Le workflow recommande pour un usage solo local est :
+
+1. `bin/dev` pour coder et lancer le serveur
+2. `bin/check` avant ou apres une modification importante
+3. `bin/setup --reset --skip-server` seulement si tu veux remettre la base locale a plat
 
 ## Bootstrap local
 
@@ -57,6 +117,38 @@ Healthcheck :
 
 [http://localhost:3000/up](http://localhost:3000/up)
 
+## Validation locale
+
+Commande minimale recommandee :
+
+```bash
+bin/check
+```
+
+Commande equivalente :
+
+```bash
+bin/rails test
+```
+
+Lancer un fichier de test precis :
+
+```bash
+bin/rails test test/integration/booking_flow_test.rb
+```
+
+## Documentation
+
+- [README.md](/Users/leobsn/Desktop/webook4u-engine/README.md) : point d'entree setup, base locale, tests et perimetre courant
+- [docs/BookingRules.md](/Users/leobsn/Desktop/webook4u-engine/docs/BookingRules.md) : point d'entree technique vers la documentation de reservation
+- [docs/BookingFlow.md](/Users/leobsn/Desktop/webook4u-engine/docs/BookingFlow.md) : reference du flux de reservation et du cycle de vie courant
+- [docs/BookingInvariants.md](/Users/leobsn/Desktop/webook4u-engine/docs/BookingInvariants.md) : reference des invariants de domaine, DB et concurrence
+- [docs/DatabaseArchitecture.md](/Users/leobsn/Desktop/webook4u-engine/docs/DatabaseArchitecture.md) : architecture de la base, tables, relations et garde-fous PostgreSQL
+- [docs/ProductScope.md](/Users/leobsn/Desktop/webook4u-engine/docs/ProductScope.md) : cadrage produit/strategie en anglais
+- [docs/ProductScope.fr.md](/Users/leobsn/Desktop/webook4u-engine/docs/ProductScope.fr.md) : cadrage produit/strategie en francais
+- [docs/FutureInvariantsChecklist.md](/Users/leobsn/Desktop/webook4u-engine/docs/FutureInvariantsChecklist.md) : checklist des invariants a revisiter lors des futures evolutions
+- [docs/BookingCrossTableAudit.md](/Users/leobsn/Desktop/webook4u-engine/docs/BookingCrossTableAudit.md) : audit historique de coherence cross-table avant ajout du trigger DB
+
 ## Base de donnees locale
 
 Le projet utilise PostgreSQL.
@@ -76,34 +168,6 @@ Le projet utilise `db/structure.sql` comme source de verite operationnelle du sc
 
 Toute analyse DB serieuse, revue de migration, ou validation d'invariant doit partir de `db/structure.sql`.
 
-## Tests
-
-Avant de lancer les tests, preparer la base avec le workflow standard du projet :
-
-```bash
-bin/rails db:prepare
-```
-
-La base de test est preparee avec le meme schema SQL PostgreSQL que le projet, y compris les invariants avances portes par `db/structure.sql`.
-
-Commande de reference :
-
-```bash
-bin/rails test
-```
-
-Commande equivalente :
-
-```bash
-bundle exec rails test
-```
-
-Lancer un fichier de test precis :
-
-```bash
-bin/rails test test/integration/booking_flow_test.rb
-```
-
 ## Verification rapide
 
 Une installation est consideree valide si :
@@ -113,6 +177,17 @@ Une installation est consideree valide si :
 - [http://localhost:3000/up](http://localhost:3000/up) repond
 - une page publique seedee s'affiche en local
 - `bin/rails test` passe au vert
+
+## Outils avances
+
+Ces elements existent dans le repo mais ne sont pas necessaires a ton usage quotidien local :
+
+- `bin/ci` pour les checks agregees CI
+- `bin/brakeman` et `bin/bundler-audit` pour les audits securite
+- `bin/rubocop` pour le style
+- `Dockerfile` pour l'image de production
+- `config/deploy.yml` et `bin/kamal` pour le deploy
+- la section `production` de `config/database.yml` pour une future mise en prod
 
 ## Perimetre actuel
 

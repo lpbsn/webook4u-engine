@@ -93,6 +93,22 @@ class Bookings::CreatePendingTest < ActiveSupport::TestCase
     end
   end
 
+  test "fails when slot is still inside opening hours but no longer aligned with the schedule grid because of minimum notice" do
+    travel_to Time.zone.local(2026, 3, 16, 14, 10, 0) do
+      result = Bookings::CreatePending.new(
+        client: @client,
+        enseigne: @enseigne,
+        service: @service,
+        booking_start_time: Time.zone.local(2026, 3, 16, 14, 30, 0)
+      ).call
+
+      assert_not result.success?
+      assert_nil result.booking
+      assert_equal Bookings::Errors::SLOT_NOT_BOOKABLE, result.error_code
+      assert_equal "Le créneau sélectionné n'est pas réservable.", result.error_message
+    end
+  end
+
   test "fails when slot is already blocked by confirmed booking" do
     travel_to Time.zone.local(2026, 3, 15, 8, 0, 0) do
       slot = Time.zone.local(2026, 3, 16, 11, 0, 0)

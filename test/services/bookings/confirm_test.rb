@@ -180,6 +180,34 @@ class Bookings::ConfirmTest < ActiveSupport::TestCase
     end
   end
 
+  test "confirmation does not depend on schedule-grid alignment remaining true at confirmation time" do
+    travel_to Time.zone.local(2026, 3, 16, 10, 4, 0) do
+      booking = @client.bookings.create!(
+        enseigne: @enseigne,
+        service: @service,
+        booking_start_time: Time.zone.local(2026, 3, 16, 10, 30, 0),
+        booking_end_time: Time.zone.local(2026, 3, 16, 11, 0, 0),
+        booking_status: :pending,
+        booking_expires_at: 1.minute.from_now
+      )
+
+      result = Bookings::Confirm.new(
+        booking: booking,
+        booking_params: {
+          customer_first_name: "Léonard",
+          customer_last_name: "Boisson",
+          customer_email: "leo@example.com"
+        }
+      ).call
+
+      assert result.success?
+      assert_nil result.error_code
+
+      booking.reload
+      assert_equal "confirmed", booking.booking_status
+    end
+  end
+
   test "confirmation ignores bookings from another enseigne of the same client" do
     travel_to Time.zone.local(2026, 3, 15, 8, 0, 0) do
       slot = Time.zone.local(2026, 3, 16, 13, 30, 0)

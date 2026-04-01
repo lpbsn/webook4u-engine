@@ -2,7 +2,15 @@
 
 module Bookings
   class SlotDecision
-    # Single point of truth for "is this slot reservable?"
+    # Single point of truth for booking-slot evaluation.
+    #
+    # `bookable?` answers the core business question used by both create and
+    # confirm flows: is this interval still valid and unblocked for the
+    # reservable resource?
+    #
+    # `matches_schedule_grid?` answers a separate schedule-alignment question
+    # used only by create flows: does this start time still align with the
+    # theoretical booking grid for that day without regenerating every slot?
     #
     # The slot is evaluated against a reservable Resource abstraction rather
     # than directly against the public booking context. Today this resource is
@@ -14,8 +22,13 @@ module Bookings
       :booking_start_time,
       :booking_end_time,
       :resource,
+      :matches_schedule_grid?,
       keyword_init: true
-    )
+    ) do
+      def creatable?
+        bookable? && matches_schedule_grid?
+      end
+    end
 
     def initialize(client:, service:, booking_start_time:, enseigne:, exclude_booking_id: nil, resource: nil)
       @client = client
@@ -24,20 +37,15 @@ module Bookings
       @booking_start_time = booking_start_time
       @exclude_booking_id = exclude_booking_id
       @resource = resource
-      @require_generated_slot = true
     end
 
     def call
-      return failure(Errors::INVALID_SLOT) if booking_start_time.nil?
-      return failure(Errors::SLOT_UNAVAILABLE) if blocked_slot?
-      return failure(Errors::SLOT_NOT_BOOKABLE) if require_generated_slot? && !generated_slot?
+      return failure(Errors::INVALID_SLOT, matches_schedule_grid: false) if booking_start_time.nil?
 
-      success
-    end
+      schedule_grid_match = matches_schedule_grid?
+      return failure(Errors::SLOT_UNAVAILABLE, matches_schedule_grid: schedule_grid_match) if blocked_slot?
 
-    def without_generated_slot_requirement
-      @require_generated_slot = false
-      self
+      success(matches_schedule_grid: schedule_grid_match)
     end
 
     private
@@ -56,17 +64,14 @@ module Bookings
       @resource ||= Resource.for_enseigne(client: client, enseigne: enseigne)
     end
 
-    def require_generated_slot?
-      @require_generated_slot
-    end
+    def matches_schedule_grid?
+      return false if booking_start_time.nil?
 
-    def generated_slot?
-      AvailableSlots.new(
-        client: client,
-        enseigne: enseigne,
-        service: service,
-        date: booking_start_time.to_date
-      ).call.include?(booking_start_time)
+      opening_intervals.any? do |interval_start, interval_end|
+        fits_within_interval?(interval_start, interval_end) &&
+          starts_on_interval_grid?(interval_start) &&
+          respects_minimum_notice?
+      end
     end
 
     def blocked_slot?
@@ -79,25 +84,50 @@ module Bookings
       ).exists?
     end
 
-    def success
+    def opening_intervals
+      @opening_intervals ||= ScheduleResolver.new(
+        client: client,
+        enseigne: enseigne,
+        date: booking_start_time.to_date
+      ).call
+    end
+
+    def fits_within_interval?(interval_start, interval_end)
+      booking_start_time >= interval_start && booking_end_time <= interval_end
+    end
+
+    def starts_on_interval_grid?(interval_start)
+      offset_seconds = booking_start_time.to_i - interval_start.to_i
+      return false if offset_seconds.negative?
+
+      (offset_seconds % BookingRules.slot_duration.to_i).zero?
+    end
+
+    def respects_minimum_notice?
+      booking_start_time >= BookingRules.minimum_bookable_time
+    end
+
+    def success(matches_schedule_grid:)
       Result.new(
         bookable?: true,
         error_code: nil,
         error_message: nil,
         booking_start_time: booking_start_time,
         booking_end_time: booking_end_time,
-        resource: resource
+        resource: resource,
+        matches_schedule_grid?: matches_schedule_grid
       )
     end
 
-    def failure(code)
+    def failure(code, matches_schedule_grid:)
       Result.new(
         bookable?: false,
         error_code: code,
         error_message: Errors.message_for(code),
         booking_start_time: booking_start_time,
         booking_end_time: booking_start_time.present? ? booking_end_time : nil,
-        resource: resource
+        resource: resource,
+        matches_schedule_grid?: matches_schedule_grid
       )
     end
   end

@@ -57,6 +57,43 @@ END;
 $$;
 
 
+--
+-- Name: enforce_global_pending_access_token_uniqueness(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.enforce_global_pending_access_token_uniqueness() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+  IF NULLIF(BTRIM(NEW.pending_access_token), '') IS NULL THEN
+    RETURN NEW;
+  END IF;
+
+  IF TG_TABLE_NAME = 'bookings' THEN
+    IF EXISTS (
+      SELECT 1
+      FROM expired_booking_links ebl
+      WHERE ebl.pending_access_token = NEW.pending_access_token
+    ) THEN
+      RAISE EXCEPTION 'pending_access_token must be globally unique across bookings and expired_booking_links'
+        USING ERRCODE = '23505';
+    END IF;
+  ELSIF TG_TABLE_NAME = 'expired_booking_links' THEN
+    IF EXISTS (
+      SELECT 1
+      FROM bookings b
+      WHERE b.pending_access_token = NEW.pending_access_token
+    ) THEN
+      RAISE EXCEPTION 'pending_access_token must be globally unique across bookings and expired_booking_links'
+        USING ERRCODE = '23505';
+    END IF;
+  END IF;
+
+  RETURN NEW;
+END;
+$$;
+
+
 SET default_tablespace = '';
 
 SET default_table_access_method = heap;
@@ -95,6 +132,7 @@ CREATE TABLE public.bookings (
     confirmation_token character varying,
     enseigne_id bigint NOT NULL,
     pending_access_token character varying,
+    confirmation_email_sent_at timestamp(6) without time zone,
     CONSTRAINT bookings_confirmed_requires_confirmation_token CHECK ((((booking_status)::text <> 'confirmed'::text) OR (NULLIF(btrim((confirmation_token)::text), ''::text) IS NOT NULL))),
     CONSTRAINT bookings_confirmed_requires_customer_email CHECK ((((booking_status)::text <> 'confirmed'::text) OR (NULLIF(btrim((customer_email)::text), ''::text) IS NOT NULL))),
     CONSTRAINT bookings_confirmed_requires_customer_first_name CHECK ((((booking_status)::text <> 'confirmed'::text) OR (NULLIF(btrim((customer_first_name)::text), ''::text) IS NOT NULL))),
@@ -102,7 +140,7 @@ CREATE TABLE public.bookings (
     CONSTRAINT bookings_end_time_after_start_time CHECK ((booking_end_time > booking_start_time)),
     CONSTRAINT bookings_pending_requires_booking_expires_at CHECK ((((booking_status)::text <> 'pending'::text) OR (booking_expires_at IS NOT NULL))),
     CONSTRAINT bookings_pending_requires_pending_access_token CHECK ((((booking_status)::text <> 'pending'::text) OR (NULLIF(btrim((pending_access_token)::text), ''::text) IS NOT NULL))),
-    CONSTRAINT bookings_status_allowed_values CHECK (((booking_status)::text = ANY ((ARRAY['pending'::character varying, 'confirmed'::character varying, 'failed'::character varying])::text[])))
+    CONSTRAINT bookings_status_allowed_values CHECK (((booking_status)::text = ANY (ARRAY[('pending'::character varying)::text, ('confirmed'::character varying)::text, ('failed'::character varying)::text])))
 );
 
 
@@ -263,6 +301,42 @@ ALTER SEQUENCE public.enseignes_id_seq OWNED BY public.enseignes.id;
 
 
 --
+-- Name: expired_booking_links; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.expired_booking_links (
+    id bigint NOT NULL,
+    client_id bigint NOT NULL,
+    pending_access_token character varying NOT NULL,
+    enseigne_id bigint,
+    service_id bigint,
+    booking_date date NOT NULL,
+    expired_at timestamp(6) without time zone NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: expired_booking_links_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.expired_booking_links_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: expired_booking_links_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.expired_booking_links_id_seq OWNED BY public.expired_booking_links.id;
+
+
+--
 -- Name: schema_migrations; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -343,6 +417,13 @@ ALTER TABLE ONLY public.enseignes ALTER COLUMN id SET DEFAULT nextval('public.en
 
 
 --
+-- Name: expired_booking_links id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.expired_booking_links ALTER COLUMN id SET DEFAULT nextval('public.expired_booking_links_id_seq'::regclass);
+
+
+--
 -- Name: services id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -419,6 +500,14 @@ ALTER TABLE ONLY public.enseigne_opening_hours
 
 ALTER TABLE ONLY public.enseignes
     ADD CONSTRAINT enseignes_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: expired_booking_links expired_booking_links_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.expired_booking_links
+    ADD CONSTRAINT expired_booking_links_pkey PRIMARY KEY (id);
 
 
 --
@@ -529,6 +618,27 @@ CREATE INDEX index_enseignes_on_client_id ON public.enseignes USING btree (clien
 
 
 --
+-- Name: index_expired_booking_links_on_client_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_expired_booking_links_on_client_id ON public.expired_booking_links USING btree (client_id);
+
+
+--
+-- Name: index_expired_booking_links_on_expired_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_expired_booking_links_on_expired_at ON public.expired_booking_links USING btree (expired_at);
+
+
+--
+-- Name: index_expired_booking_links_on_pending_access_token; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_expired_booking_links_on_pending_access_token ON public.expired_booking_links USING btree (pending_access_token);
+
+
+--
 -- Name: index_services_on_client_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -540,6 +650,20 @@ CREATE INDEX index_services_on_client_id ON public.services USING btree (client_
 --
 
 CREATE TRIGGER bookings_client_consistency_trigger BEFORE INSERT OR UPDATE ON public.bookings FOR EACH ROW EXECUTE FUNCTION public.enforce_bookings_client_consistency();
+
+
+--
+-- Name: bookings bookings_global_pending_access_token_uniqueness_trigger; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER bookings_global_pending_access_token_uniqueness_trigger BEFORE INSERT OR UPDATE OF pending_access_token ON public.bookings FOR EACH ROW EXECUTE FUNCTION public.enforce_global_pending_access_token_uniqueness();
+
+
+--
+-- Name: expired_booking_links expired_booking_links_global_pending_access_token_uniqueness_tr; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER expired_booking_links_global_pending_access_token_uniqueness_tr BEFORE INSERT OR UPDATE OF pending_access_token ON public.expired_booking_links FOR EACH ROW EXECUTE FUNCTION public.enforce_global_pending_access_token_uniqueness();
 
 
 --
@@ -583,6 +707,14 @@ ALTER TABLE ONLY public.client_opening_hours
 
 
 --
+-- Name: expired_booking_links fk_rails_c2bc6272db; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.expired_booking_links
+    ADD CONSTRAINT fk_rails_c2bc6272db FOREIGN KEY (client_id) REFERENCES public.clients(id);
+
+
+--
 -- Name: enseignes fk_rails_cc63fed4c0; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -605,7 +737,10 @@ ALTER TABLE ONLY public.bookings
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260402060100'),
+('20260402050000'),
 ('20260402030000'),
+('20260401170000'),
 ('20260401150000'),
 ('20260401120000'),
 ('20260325130000'),

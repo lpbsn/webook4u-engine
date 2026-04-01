@@ -2,54 +2,73 @@
 
 module Bookings
   class PurgeExpiredPending
-    Result = Struct.new(:deleted_count, :cutoff, keyword_init: true)
-    EXPIRED_LINK_CONTEXT_CACHE_KEY_PREFIX = "bookings:expired_pending_link".freeze
-    EXPIRED_LINK_CONTEXT_TTL = 35.days
+    DEFAULT_BATCH_SIZE = 100
+    Result = Struct.new(:deleted_count, :upsert_attempt_count, :batch_count, :cutoff, keyword_init: true)
 
-    def self.call(cutoff: Time.zone.now)
-      new(cutoff: cutoff).call
+    def self.call(cutoff: Time.zone.now, batch_size: DEFAULT_BATCH_SIZE)
+      new(cutoff: cutoff, batch_size: batch_size).call
     end
 
-    def initialize(cutoff:)
+    def initialize(cutoff:, batch_size:)
       @cutoff = cutoff
+      @batch_size = batch_size
     end
 
     def call
-      expired_pending_rows = Booking.pending
-                                   .where("booking_expires_at < ?", cutoff)
-                                   .select(:id, :client_id, :enseigne_id, :service_id, :booking_start_time, :pending_access_token)
-                                   .to_a
+      deleted_count = 0
+      upsert_attempt_count = 0
+      batch_count = 0
 
-      cache_expired_link_contexts!(expired_pending_rows)
+      expired_pending_scope.in_batches(of: batch_size) do |relation|
+        rows = relation
+               .select(:id, :client_id, :enseigne_id, :service_id, :booking_start_time, :booking_expires_at, :pending_access_token)
+               .to_a
 
-      deleted_count = Booking.where(id: expired_pending_rows.map(&:id)).delete_all
+        next if rows.empty?
 
-      Result.new(deleted_count: deleted_count, cutoff: cutoff)
-    end
+        batch_count += 1
+        Booking.transaction do
+          deleted_count += Booking.where(id: rows.map(&:id)).delete_all
+          upsert_attempt_count += persist_expired_links!(rows)
+        end
+      end
 
-    def self.expired_link_context_for(client_id:, token:)
-      Rails.cache.read(expired_link_context_cache_key(client_id: client_id, token: token))
-    end
-
-    def self.expired_link_context_cache_key(client_id:, token:)
-      "#{EXPIRED_LINK_CONTEXT_CACHE_KEY_PREFIX}:#{client_id}:#{token}"
+      Result.new(
+        deleted_count: deleted_count,
+        upsert_attempt_count: upsert_attempt_count,
+        batch_count: batch_count,
+        cutoff: cutoff
+      )
     end
 
     private
 
-    attr_reader :cutoff
+    attr_reader :cutoff, :batch_size
 
-    def cache_expired_link_contexts!(rows)
-      rows.each do |row|
-        key = self.class.expired_link_context_cache_key(client_id: row.client_id, token: row.pending_access_token)
-        value = {
-          enseigne_id: row.enseigne_id,
-          service_id: row.service_id,
-          date: row.booking_start_time.to_date
-        }
+    def expired_pending_scope
+      Booking.pending.where("booking_expires_at < ?", cutoff)
+    end
 
-        Rails.cache.write(key, value, expires_in: EXPIRED_LINK_CONTEXT_TTL)
-      end
+    def persist_expired_links!(rows)
+      now = Time.zone.now
+
+      ExpiredBookingLink.upsert_all(
+        rows.map do |row|
+          {
+            client_id: row.client_id,
+            pending_access_token: row.pending_access_token,
+            enseigne_id: row.enseigne_id,
+            service_id: row.service_id,
+            booking_date: row.booking_start_time.to_date,
+            expired_at: row.booking_expires_at,
+            created_at: now,
+            updated_at: now
+          }
+        end,
+        unique_by: :index_expired_booking_links_on_pending_access_token
+      )
+
+      rows.size
     end
   end
 end

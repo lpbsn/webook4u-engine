@@ -67,6 +67,7 @@ Note de domaine :
 - Le slot doit provenir de la grille systeme, pas d'un timestamp arbitraire.
 - Le slot ne doit pas deja etre bloque par un `confirmed` ou un `pending` actif.
 - Un pending valide recoit une expiration a 5 minutes.
+- Le `pending_access_token` est opaque, non predictible, et globalement unique (y compris vis-a-vis des tombstones d'expiration).
 - La creation est serialisee par `SlotLock.with_lock(resource:)`.
 - En etape 1, cette ressource est mapee a l'enseigne entiere.
 - Ce choix est volontairement plus grossier que l'invariant metier d'overlap :
@@ -95,9 +96,9 @@ Note de domaine :
 - `PENDING_CREATION_FAILED` :
   - echec de creation du pending
 - `NOT_PENDING` :
-  - tentative de confirmer un booking non pending
+  - regle metier interne de transition : tentative de confirmer un booking non pending
 - `SESSION_EXPIRED` :
-  - pending expire
+  - pending expire, encore present ou deja purge
 - `FORM_INVALID` :
   - informations client invalides
 - `SLOT_TAKEN_DURING_CONFIRM` :
@@ -134,9 +135,10 @@ Comportement controller :
 - soit par confirmation
 - soit, plus tard, possiblement par un futur echec de paiement `pending -> failed` (decision a finaliser avec le design paiement)
 - soit par expiration logique
-  - le booking reste `pending` en base
-  - il n'est plus bloquant ni confirmable
-  - un batch periodique peut ensuite le supprimer physiquement sans changer la logique du tunnel
+  - le booking cesse d'etre bloquant et confirmable immediatement
+  - un batch periodique peut ensuite le supprimer physiquement
+  - si le `pending` expire est purge, un contexte minimal durable est conserve via tombstone pour que l'UX publique continue a repondre `SESSION_EXPIRED`
+  - le token public de ce pending reste reserve par la tombstone et n'est pas reattribue a un nouveau cycle
 
 ### Erreurs de transition non persistees
 
@@ -146,10 +148,11 @@ Les erreurs suivantes restent des resultats de service et ne changent pas le sta
 - `SLOT_NOT_BOOKABLE`
 - `SLOT_UNAVAILABLE`
 - `PENDING_CREATION_FAILED`
-- `NOT_PENDING`
 - `SESSION_EXPIRED`
 - `FORM_INVALID`
 - `SLOT_TAKEN_DURING_CONFIRM`
+
+`NOT_PENDING` reste une erreur metier de service utile en interne, mais elle n'est plus exposee comme contrat HTTP du tunnel public lorsqu'un token ne designe pas un `pending` resolvable.
 
 Tant qu'aucun flux de paiement actif n'est branche, un echec de transition n'est pas materialise en `failed`.
 Cette ligne de conduite est une convention de l'etape actuelle, pas une fermeture definitive du sujet cycle de vie.

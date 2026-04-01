@@ -4,8 +4,6 @@ class Bookings::PurgeExpiredPendingTest < ActiveSupport::TestCase
   include ActiveSupport::Testing::TimeHelpers
 
   setup do
-    Rails.cache.clear
-
     @client = Client.create!(name: "Client purge", slug: "client-purge")
     @enseigne = @client.enseignes.create!(name: "Enseigne purge")
     @service = @client.services.create!(name: "Service purge", duration_minutes: 30, price_cents: 1500)
@@ -40,12 +38,20 @@ class Bookings::PurgeExpiredPendingTest < ActiveSupport::TestCase
       result = Bookings::PurgeExpiredPending.call(cutoff: Time.zone.now)
 
       assert_equal 1, result.deleted_count
+      assert_equal 1, result.upsert_attempt_count
+      assert_equal 1, result.batch_count
       assert_equal Time.zone.now, result.cutoff
       assert_not Booking.exists?(expired_pending.id)
       assert Booking.exists?(boundary_pending.id)
       assert Booking.exists?(active_pending.id)
       assert Booking.exists?(confirmed.id)
       assert Booking.exists?(failed.id)
+
+      tombstone = ExpiredBookingLink.find_by!(client_id: @client.id, pending_access_token: expired_pending.pending_access_token)
+      assert_equal @enseigne.id, tombstone.enseigne_id
+      assert_equal @service.id, tombstone.service_id
+      assert_equal Date.new(2026, 4, 2), tombstone.booking_date
+      assert_equal expired_pending.booking_expires_at.to_i, tombstone.expired_at.to_i
     end
   end
 
@@ -62,12 +68,15 @@ class Bookings::PurgeExpiredPendingTest < ActiveSupport::TestCase
       second_result = Bookings::PurgeExpiredPending.call(cutoff: cutoff)
 
       assert_equal 1, first_result.deleted_count
+      assert_equal 1, first_result.upsert_attempt_count
       assert_equal 0, second_result.deleted_count
+      assert_equal 0, second_result.upsert_attempt_count
       assert_not Booking.exists?(expired_pending.id)
+      assert_equal 1, ExpiredBookingLink.where(client_id: @client.id, pending_access_token: expired_pending.pending_access_token).count
     end
   end
 
-  test "stores expired pending link context for deleted bookings" do
+  test "persists expired pending link context for deleted bookings" do
     travel_to Time.zone.local(2026, 4, 1, 10, 0, 0) do
       expired_pending = create_booking(
         status: :pending,
@@ -77,14 +86,30 @@ class Bookings::PurgeExpiredPendingTest < ActiveSupport::TestCase
 
       Bookings::PurgeExpiredPending.call(cutoff: Time.zone.now)
 
-      context = Bookings::PurgeExpiredPending.expired_link_context_for(
-        client_id: @client.id,
-        token: expired_pending.pending_access_token
-      )
+      expired_link = ExpiredBookingLink.find_by!(client_id: @client.id, pending_access_token: expired_pending.pending_access_token)
 
-      assert_equal @enseigne.id, context[:enseigne_id]
-      assert_equal @service.id, context[:service_id]
-      assert_equal Date.new(2026, 4, 2), context[:date]
+      assert_equal @enseigne.id, expired_link.enseigne_id
+      assert_equal @service.id, expired_link.service_id
+      assert_equal Date.new(2026, 4, 2), expired_link.booking_date
+    end
+  end
+
+  test "processes expired pending bookings in batches" do
+    travel_to Time.zone.local(2026, 4, 1, 10, 0, 0) do
+      3.times do |index|
+        create_booking(
+          status: :pending,
+          starts_at: Time.zone.local(2026, 4, 2, 9 + index, 0, 0),
+          expires_at: 5.minutes.ago
+        )
+      end
+
+      result = Bookings::PurgeExpiredPending.call(cutoff: Time.zone.now, batch_size: 2)
+
+      assert_equal 3, result.deleted_count
+      assert_equal 3, result.upsert_attempt_count
+      assert_equal 2, result.batch_count
+      assert_equal 3, ExpiredBookingLink.count
     end
   end
 

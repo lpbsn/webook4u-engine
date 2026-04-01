@@ -71,6 +71,7 @@ Elle fixe le cadre MVP courant sans introduire de modele conceptuel plus large.
 - `enseignes`
 - `services`
 - `bookings`
+- `expired_booking_links`
 - `client_opening_hours`
 - `enseigne_opening_hours`
 
@@ -187,11 +188,34 @@ Lecture metier :
 
 - un booking `pending` maintient temporairement un creneau
 - un booking `pending` expire cesse d'etre bloquant immediatement, meme avant sa suppression physique par batch
+- si ce `pending` expire est purge, le systeme conserve un contexte public minimal durable pour resoudre encore l'UX `SESSION_EXPIRED`
+- le `pending_access_token` d'un pending purge reste reserve par cette retention et n'est pas recyclable
 - un booking `confirmed` represente une reservation confirmee
 - `failed` existe deja comme valeur de schema
   - orientation actuelle : futur usage pour un echec paiement persistant
   - ce cadrage reste preparatoire tant que le flux paiement et ses transitions ne sont pas implementes
   - il ne doit pas etre lu comme un statut generique d'erreur metier dans le flux actuel
+
+### `expired_booking_links`
+
+Role :
+
+- retention durable d'un contexte public minimal apres purge physique des `pending` expires
+
+Colonnes importantes :
+
+- `client_id`
+- `pending_access_token`
+- `enseigne_id`
+- `service_id`
+- `booking_date`
+- `expired_at`
+
+Points structurants :
+
+- `pending_access_token` y est unique globalement
+- cette table preserve le contexte necessaire au retour UX `SESSION_EXPIRED`
+- la collision de token avec `bookings.pending_access_token` est interdite en base
 
 ### `client_opening_hours`
 
@@ -236,6 +260,8 @@ PostgreSQL protege aujourd'hui les invariants suivants :
   - `customer_last_name` non vide
   - `customer_email` non vide
   - `confirmation_token` non vide
+- `pending_access_token` doit etre globalement unique entre `bookings` et `expired_booking_links`
+  - une collision est rejetee par trigger PostgreSQL dans les deux sens
 
 ### Cohérence cross-table
 
@@ -277,6 +303,14 @@ Indexes principaux :
 - unique sur `confirmation_token`
 - unique sur `pending_access_token`
 - unique partiel sur `enseigne_id + booking_start_time` pour les seuls bookings `confirmed`
+
+### `expired_booking_links`
+
+Indexes principaux :
+
+- index sur `client_id`
+- index sur `expired_at`
+- unique sur `pending_access_token`
 
 Ce dernier index est critique :
 

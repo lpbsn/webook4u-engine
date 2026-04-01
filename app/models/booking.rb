@@ -41,6 +41,7 @@ class Booking < ApplicationRecord
   # =========================================================
   validates :booking_expires_at, presence: true, if: :pending?
   validates :pending_access_token, presence: true, uniqueness: true, if: :pending?
+  validate :pending_access_token_not_reused_from_expired_links, if: :pending?
 
   validates :customer_first_name, presence: true, if: :confirmed?
   validates :customer_last_name, presence: true, if: :confirmed?
@@ -119,7 +120,7 @@ class Booking < ApplicationRecord
   def generate_pending_access_token
     loop do
       token = SecureRandom.urlsafe_base64(24)
-      break token unless self.class.exists?(pending_access_token: token)
+      break token unless pending_access_token_taken_globally?(token)
     end
   end
 
@@ -128,5 +129,16 @@ class Booking < ApplicationRecord
       token = SecureRandom.uuid
       break token unless self.class.exists?(confirmation_token: token)
     end
+  end
+
+  def pending_access_token_not_reused_from_expired_links
+    return if pending_access_token.blank?
+    return unless ExpiredBookingLink.exists?(pending_access_token: pending_access_token)
+
+    errors.add(:pending_access_token, :taken)
+  end
+
+  def pending_access_token_taken_globally?(token)
+    self.class.exists?(pending_access_token: token) || ExpiredBookingLink.exists?(pending_access_token: token)
   end
 end

@@ -18,7 +18,10 @@ Il couvre :
 
 - `booking_start_time`, `booking_end_time` et `booking_status` sont requis.
 - `booking_end_time > booking_start_time`.
-- les tokens doivent rester uniques quand presents.
+- `pending_access_token` doit rester globalement unique dans le systeme :
+  - unicite dans `bookings`
+  - unicite dans `expired_booking_links`
+  - et absence de collision croisee `bookings <-> expired_booking_links`
 - les champs requis dependent du statut `pending` ou `confirmed`.
 
 ### Invariants de cycle de vie
@@ -159,6 +162,8 @@ Le systeme bloque des intervalles reels, pas uniquement des `start_time` :
 - purge periodique des pending expires :
   - l'expiration reste logique immediatement
   - la suppression physique se fait ensuite par batch
+  - un contexte public minimal est conserve durablement dans `expired_booking_links` pour permettre une redirection `SESSION_EXPIRED` apres purge
+  - le `pending_access_token` du pending purge reste reserve par cette tombstone et ne peut pas etre recycle
   - aucun nouveau statut n'est introduit
 - pas d'annulation ni de replanification dans le flux courant
 

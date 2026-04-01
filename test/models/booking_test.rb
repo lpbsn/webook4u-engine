@@ -102,6 +102,104 @@ class BookingTest < ActiveSupport::TestCase
     assert booking.errors[:booking_expires_at].any?
   end
 
+  test "pending token generation skips token already present in expired booking links" do
+    reused_token = "reused-pending-token"
+    ExpiredBookingLink.create!(
+      client: @client,
+      pending_access_token: reused_token,
+      booking_date: Date.current,
+      expired_at: 1.day.ago
+    )
+
+    generated_tokens = [ reused_token, "fresh-pending-token" ]
+
+    booking = nil
+    original_generator = SecureRandom.method(:urlsafe_base64)
+    SecureRandom.define_singleton_method(:urlsafe_base64) { |*| generated_tokens.shift }
+
+    begin
+      booking = Booking.create!(
+        client: @client,
+        enseigne: @enseigne,
+        service: @service,
+        booking_start_time: Time.zone.local(2026, 3, 16, 10, 30, 0),
+        booking_end_time: Time.zone.local(2026, 3, 16, 11, 0, 0),
+        booking_status: :pending,
+        booking_expires_at: Time.zone.local(2026, 3, 15, 10, 35, 0)
+      )
+    ensure
+      SecureRandom.define_singleton_method(:urlsafe_base64, original_generator)
+    end
+
+    assert_equal "fresh-pending-token", booking.pending_access_token
+  end
+
+  test "pending token generation skips tokens already present in bookings and expired booking links" do
+    booking_token = "existing-booking-token"
+    tombstone_token = "existing-tombstone-token"
+
+    @client.bookings.create!(
+      enseigne: @enseigne,
+      service: @service,
+      booking_start_time: Time.zone.local(2026, 3, 16, 9, 30, 0),
+      booking_end_time: Time.zone.local(2026, 3, 16, 10, 0, 0),
+      booking_status: :pending,
+      booking_expires_at: Time.zone.local(2026, 3, 15, 10, 0, 0),
+      pending_access_token: booking_token
+    )
+
+    ExpiredBookingLink.create!(
+      client: @client,
+      pending_access_token: tombstone_token,
+      booking_date: Date.current,
+      expired_at: 1.day.ago
+    )
+
+    generated_tokens = [ booking_token, tombstone_token, "fresh-global-token" ]
+    original_generator = SecureRandom.method(:urlsafe_base64)
+    SecureRandom.define_singleton_method(:urlsafe_base64) { |*| generated_tokens.shift }
+
+    booking = nil
+    begin
+      booking = @client.bookings.create!(
+        enseigne: @enseigne,
+        service: @service,
+        booking_start_time: Time.zone.local(2026, 3, 16, 10, 30, 0),
+        booking_end_time: Time.zone.local(2026, 3, 16, 11, 0, 0),
+        booking_status: :pending,
+        booking_expires_at: Time.zone.local(2026, 3, 15, 10, 35, 0)
+      )
+    ensure
+      SecureRandom.define_singleton_method(:urlsafe_base64, original_generator)
+    end
+
+    assert_equal "fresh-global-token", booking.pending_access_token
+  end
+
+  test "pending booking is invalid when token already exists in expired booking links" do
+    reused_token = "reused-pending-token"
+    ExpiredBookingLink.create!(
+      client: @client,
+      pending_access_token: reused_token,
+      booking_date: Date.current,
+      expired_at: 1.day.ago
+    )
+
+    booking = Booking.new(
+      client: @client,
+      enseigne: @enseigne,
+      service: @service,
+      booking_start_time: Time.zone.local(2026, 3, 16, 10, 45, 0),
+      booking_end_time: Time.zone.local(2026, 3, 16, 11, 15, 0),
+      booking_status: :pending,
+      booking_expires_at: Time.zone.local(2026, 3, 15, 10, 50, 0),
+      pending_access_token: reused_token
+    )
+
+    assert_not booking.valid?
+    assert_includes booking.errors[:pending_access_token], "has already been taken"
+  end
+
   # =========================================================
   # VALIDATIONS CONDITIONNELLES : CONFIRMED
   # =========================================================
@@ -741,6 +839,40 @@ class BookingTest < ActiveSupport::TestCase
     end
 
     assert_includes error.message, "bookings_pending_requires_pending_access_token"
+  end
+
+  test "database rejects pending booking when token already exists in expired booking links" do
+    now = Time.current
+    reused_token = "reused-pending-token-db"
+    ExpiredBookingLink.insert_all!([
+      {
+        client_id: @client.id,
+        pending_access_token: reused_token,
+        booking_date: now.to_date,
+        expired_at: now - 1.day,
+        created_at: now,
+        updated_at: now
+      }
+    ])
+
+    error = assert_raises ActiveRecord::StatementInvalid do
+      Booking.insert_all!([
+        {
+          client_id: @client.id,
+          enseigne_id: @enseigne.id,
+          service_id: @service.id,
+          booking_start_time: now,
+          booking_end_time: now + 30.minutes,
+          booking_status: "pending",
+          booking_expires_at: now + 5.minutes,
+          pending_access_token: reused_token,
+          created_at: now,
+          updated_at: now
+        }
+      ])
+    end
+
+    assert_includes error.message, "pending_access_token must be globally unique across bookings and expired_booking_links"
   end
 
   test "database rejects confirmed booking without customer_first_name" do

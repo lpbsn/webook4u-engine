@@ -6,8 +6,6 @@ class BookingsControllerTest < ActionDispatch::IntegrationTest
   include ActiveSupport::Testing::TimeHelpers
 
   setup do
-    Rails.cache.clear
-
     @client = Client.create!(
       name: "Le Salon Des gâté",
       slug: "salon-des-gate"
@@ -598,6 +596,76 @@ class BookingsControllerTest < ActionDispatch::IntegrationTest
         booking: { customer_first_name: "A", customer_last_name: "B", customer_email: "a@b.com" }
       }
       assert_response :not_found
+    end
+  end
+
+  test "old tombstoned token cannot pollute a new public booking cycle" do
+    travel_to Time.zone.local(2026, 3, 15, 8, 0, 0) do
+      expired_booking = @client.bookings.create!(
+        enseigne: @enseigne,
+        service: @service,
+        booking_start_time: Time.zone.local(2026, 3, 16, 16, 0, 0),
+        booking_end_time: Time.zone.local(2026, 3, 16, 16, 30, 0),
+        booking_status: :pending,
+        booking_expires_at: 1.minute.ago
+      )
+      expired_token = expired_booking.pending_access_token
+
+      Bookings::PurgeExpiredPending.call(cutoff: Time.zone.now)
+
+      new_booking = @client.bookings.create!(
+        enseigne: @enseigne,
+        service: @service,
+        booking_start_time: Time.zone.local(2026, 3, 16, 17, 0, 0),
+        booking_end_time: Time.zone.local(2026, 3, 16, 17, 30, 0),
+        booking_status: :pending,
+        booking_expires_at: 5.minutes.from_now
+      )
+
+      assert_not_equal expired_token, new_booking.pending_access_token
+
+      get pending_booking_path(@client.slug, expired_token)
+      assert_redirected_to public_client_path(
+        @client.slug,
+        enseigne_id: @enseigne.id,
+        service_id: @service.id,
+        date: Date.new(2026, 3, 16)
+      )
+      follow_redirect!
+      assert_equal Bookings::Errors.message_for(Bookings::Errors::SESSION_EXPIRED), flash[:alert]
+
+      get pending_booking_path(@client.slug, new_booking.pending_access_token)
+      assert_response :success
+      assert_includes response.body, "Valider la réservation"
+
+      post confirm_booking_path(@client.slug, expired_token), params: {
+        booking: {
+          customer_first_name: "Legacy",
+          customer_last_name: "Token",
+          customer_email: "legacy@example.com"
+        }
+      }
+
+      assert_redirected_to public_client_path(
+        @client.slug,
+        enseigne_id: @enseigne.id,
+        service_id: @service.id,
+        date: Date.new(2026, 3, 16)
+      )
+      follow_redirect!
+      assert_equal Bookings::Errors.message_for(Bookings::Errors::SESSION_EXPIRED), flash[:alert]
+
+      post confirm_booking_path(@client.slug, new_booking.pending_access_token), params: {
+        booking: {
+          customer_first_name: "Léonard",
+          customer_last_name: "Boisson",
+          customer_email: "leo@example.com"
+        }
+      }
+
+      new_booking.reload
+      assert_equal "confirmed", new_booking.booking_status
+      assert_redirected_to booking_success_path(@client.slug, new_booking.confirmation_token)
     end
   end
 

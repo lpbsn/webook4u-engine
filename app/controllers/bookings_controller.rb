@@ -68,39 +68,24 @@ class BookingsController < ApplicationController
   end
 
   def load_public_pending_booking
-    @booking = @client.bookings.pending.find_by(pending_access_token: params[:token])
-    if @booking.present?
-      if @booking.expired?
-        redirect_to_session_expired_for(
-          enseigne_id: @booking.enseigne_id,
-          service_id: @booking.service_id,
-          date: @booking.booking_start_time.to_date
-        )
-        return
-      end
+    resolution = Bookings::PublicPendingTokenResolver.call(client: @client, token: params[:token])
 
+    if resolution.active_pending?
+      @booking = resolution.booking
       hydrate_booking_relations
       return
     end
 
-    expired_context = expired_link_context_for_token
-    if expired_context.present?
+    if resolution.expired_pending? || resolution.expired_purged?
       redirect_to_session_expired_for(
-        enseigne_id: expired_context[:enseigne_id],
-        service_id: expired_context[:service_id],
-        date: expired_context[:date]
+        enseigne_id: resolution.context[:enseigne_id],
+        service_id: resolution.context[:service_id],
+        date: resolution.context[:date]
       )
       return
     end
 
     raise ActiveRecord::RecordNotFound
-  end
-
-  def expired_link_context_for_token
-    Bookings::PurgeExpiredPending.expired_link_context_for(
-      client_id: @client.id,
-      token: params[:token]
-    )
   end
 
   def redirect_to_session_expired_for(enseigne_id:, service_id:, date:)

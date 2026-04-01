@@ -23,9 +23,9 @@ bin/check
 
 Elles couvrent l'essentiel :
 
-- installer et preparer le projet localement
-- lancer l'application en developpement
-- verifier rapidement que la suite de tests Rails passe
+- `bin/setup --skip-server` valide et prepare l'environnement local
+- `bin/dev` lance l'application en developpement
+- `bin/check` execute simplement les tests Rails locaux
 
 Pour l'instant, tu peux ignorer :
 
@@ -78,11 +78,14 @@ Validation minimale avant un changement sensible :
 bin/check
 ```
 
-Equivalent explicite :
+Alias explicite :
 
 ```bash
 bin/rails test
 ```
+
+`bin/check` suppose un environnement deja valide et prepare par `bin/setup --skip-server`.
+Si un probleme local vient de Ruby, Bundler, PostgreSQL ou de la base, la remediaton attendue est de repasser par `bin/setup --skip-server`, pas d'ajouter du bootstrap implicite a `bin/check`.
 
 Reset exceptionnel de la base locale :
 
@@ -140,6 +143,9 @@ Commande equivalente :
 bin/rails test
 ```
 
+`bin/check` reste volontairement un alias court de test local.
+Il ne fait ni preflight d'environnement, ni `db:prepare`, ni auto-reparation.
+
 Lancer un fichier de test precis :
 
 ```bash
@@ -168,6 +174,13 @@ Configuration locale par defaut :
 Par defaut, `config/database.yml` utilise PostgreSQL local avec l'utilisateur systeme courant si aucun `username` n'est renseigne.
 
 PostgreSQL doit donc etre demarre et accessible en local, sauf configuration specifique via `DATABASE_URL`.
+
+Contrat local de `bin/setup` :
+
+- le preflight PostgreSQL part de la config `development` de `config/database.yml`
+- si `development.url` est defini, ses attributs remplacent seulement les cles explicites de cette URL
+- si `DATABASE_URL` est defini, ses attributs remplacent ensuite seulement les cles explicites qu'il fournit
+- le preflight verifie ainsi la meme cible `development` que `bin/rails db:prepare`
 
 Important :
 

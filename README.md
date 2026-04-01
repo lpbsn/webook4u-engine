@@ -154,6 +154,9 @@ bin/rails test test/integration/booking_flow_test.rb
 
 ## Documentation
 
+- [docs/DeveloperOnboarding.md](/Users/leobsn/Desktop/webook4u-engine/docs/DeveloperOnboarding.md) : vue d'ensemble technique pour un nouveau developpeur
+- [docs/TestOnboarding.md](/Users/leobsn/Desktop/webook4u-engine/docs/TestOnboarding.md) : vue d'ensemble de la strategie et de la structure des tests
+- [docs/DatabaseOnboarding.md](/Users/leobsn/Desktop/webook4u-engine/docs/DatabaseOnboarding.md) : vue d'ensemble rapide de la structure de la base et des invariants DB
 - [README.md](/Users/leobsn/Desktop/webook4u-engine/README.md) : point d'entree setup, base locale, tests et perimetre courant
 - [docs/BookingRules.md](/Users/leobsn/Desktop/webook4u-engine/docs/BookingRules.md) : point d'entree technique vers la documentation de reservation
 - [docs/BookingFlow.md](/Users/leobsn/Desktop/webook4u-engine/docs/BookingFlow.md) : reference du flux de reservation et du cycle de vie courant

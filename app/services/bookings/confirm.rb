@@ -17,11 +17,10 @@ module Bookings
 
       # Etape 1: la confirmation est sérialisée au niveau de l'enseigne entière.
       # Ce n'est pas la granularité métier cible long terme; c'est un compromis
-      # temporaire avant l'introduction d'une ressource plus fine à réserver.
+      # temporaire avant l'introduction d'une ressource (staff) plus fine à réserver.
       SlotLock.with_lock(resource: resource) do
         decision = slot_decision(resource: resource)
-        decision_failure_code = failure_code_for(decision)
-        return failure(decision_failure_code) if decision_failure_code.present?
+        return failure(decision.error_code) unless decision.bookable?
 
         booking.update!(
           confirmation_token: SecureRandom.uuid,
@@ -53,13 +52,7 @@ module Bookings
         booking_start_time: booking.booking_start_time,
         exclude_booking_id: booking.id,
         resource: resource
-      ).call
-    end
-
-    def failure_code_for(decision)
-      return decision.error_code unless decision.bookable?
-
-      nil
+      ).without_generated_slot_requirement.call
     end
 
     def success(booking)

@@ -13,6 +13,7 @@ module Bookings
 
     def call
       return failure(Errors::PENDING_CREATION_FAILED) unless valid_enseigne_context?
+      return failure(Errors::PENDING_CREATION_FAILED) unless valid_service_context?
 
       resource = Resource.for_enseigne(client: client, enseigne: enseigne)
       decision = slot_decision(resource: resource)
@@ -54,6 +55,10 @@ module Bookings
 
     def valid_enseigne_context?
       enseigne.present? && enseigne.active? && enseigne.client_id == client.id
+    end
+
+    def valid_service_context?
+      service.present? && service.client_id == client.id
     end
 
     def slot_decision(resource:)

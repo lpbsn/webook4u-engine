@@ -272,6 +272,44 @@ class Bookings::CreatePendingTest < ActiveSupport::TestCase
     end
   end
 
+  test "fails when service belongs to another client" do
+    other_client = Client.create!(
+      name: "Autre salon",
+      slug: "autre-salon"
+    )
+    other_service = other_client.services.create!(
+      name: "Massage",
+      duration_minutes: 45,
+      price_cents: 5000
+    )
+
+    travel_to Time.zone.local(2026, 3, 15, 8, 0, 0) do
+      slot = Time.zone.local(2026, 3, 16, 10, 0, 0)
+
+      booking_singleton = class << Booking; self; end
+      booking_singleton.alias_method :create_without_service_context_guard_test!, :create!
+      booking_singleton.define_method(:create!) do |_attrs|
+        raise "Booking.create! should not be called for invalid service context"
+      end
+
+      begin
+        result = Bookings::CreatePending.new(
+          client: @client,
+          enseigne: @enseigne,
+          service: other_service,
+          booking_start_time: slot
+        ).call
+
+        assert_not result.success?
+        assert_nil result.booking
+        assert_equal Bookings::Errors::PENDING_CREATION_FAILED, result.error_code
+      ensure
+        booking_singleton.alias_method :create!, :create_without_service_context_guard_test!
+        booking_singleton.remove_method :create_without_service_context_guard_test!
+      end
+    end
+  end
+
   test "uses enseigne opening hours when the client has a single enseigne" do
     create_weekday_opening_hours_for_enseigne(@enseigne, opens_at: "10:00", closes_at: "16:00")
 

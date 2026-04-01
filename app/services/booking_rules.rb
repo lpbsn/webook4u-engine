@@ -8,11 +8,9 @@ module BookingRules
   MAX_FUTURE_DAYS = 30
   PENDING_EXPIRATION_MINUTES = 5
 
-  BUSINESS_TIMEZONE = "Europe/Paris"
-
   class << self
     def business_today
-      Time.now.in_time_zone(BUSINESS_TIMEZONE).to_date
+      Time.current.in_time_zone(business_timezone).to_date
     end
 
     def slot_duration
@@ -43,6 +41,12 @@ module BookingRules
     def booking_expired?(booking, now: Time.zone.now)
       return true if booking.booking_expires_at.blank?
       booking.booking_expires_at <= now
+    end
+
+    private
+
+    def business_timezone
+      Rails.application.config.time_zone
     end
   end
 end

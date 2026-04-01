@@ -6,6 +6,10 @@ require "test_helper"
 class BookingRulesTest < ActiveSupport::TestCase
   include ActiveSupport::Testing::TimeHelpers
 
+  test "business_today uses Rails application time zone as single source of truth" do
+    assert_equal Rails.application.config.time_zone, "Europe/Paris"
+  end
+
   # --- business_today (Europe/Paris) ---
   # Paris is UTC+1 in March 2026 (before DST on Mar 29).
   # These two tests anchor to the same UTC date (Mar 15) but on opposite

@@ -346,4 +346,50 @@ class Bookings::ConfirmTest < ActiveSupport::TestCase
       assert_equal "pending", booking.booking_status
     end
   end
+
+  test "maps allowlisted exclusion conflict to slot taken during confirm" do
+    travel_to Time.zone.local(2026, 3, 15, 8, 0, 0) do
+      booking = @client.bookings.create!(
+        enseigne: @enseigne,
+        service: @service,
+        booking_start_time: Time.zone.local(2026, 3, 16, 15, 30, 0),
+        booking_end_time: Time.zone.local(2026, 3, 16, 16, 0, 0),
+        booking_status: :pending,
+        booking_expires_at: BookingRules.pending_expires_at
+      )
+
+      constraint_name = "bookings_confirmed_no_overlapping_intervals_per_enseigne"
+      fake_pg_result = Object.new
+      fake_pg_result.define_singleton_method(:error_field) do |_field|
+        constraint_name
+      end
+
+      fake_pg_error = PG::ExclusionViolation.new("conflicting key value violates exclusion constraint")
+      fake_pg_error.define_singleton_method(:result) { fake_pg_result }
+
+      conflict_error = ActiveRecord::StatementInvalid.new("overlap conflict")
+      conflict_error.define_singleton_method(:cause) { fake_pg_error }
+
+      booking.define_singleton_method(:update!) do |_attrs|
+        raise conflict_error
+      end
+
+      result = Bookings::Confirm.new(
+        booking: booking,
+        booking_params: {
+          customer_first_name: "Léonard",
+          customer_last_name: "Boisson",
+          customer_email: "leo@example.com"
+        }
+      ).call
+
+      assert_not result.success?
+      assert_equal booking, result.booking
+      assert_equal Bookings::Errors::SLOT_TAKEN_DURING_CONFIRM, result.error_code
+      assert_equal Bookings::Errors.message_for(Bookings::Errors::SLOT_TAKEN_DURING_CONFIRM), result.error_message
+
+      booking.reload
+      assert_equal "pending", booking.booking_status
+    end
+  end
 end

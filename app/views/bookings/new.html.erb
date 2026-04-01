@@ -7,16 +7,7 @@
   Montant à payer : <%= format_price_cents(@service.price_cents) %>
 </p>
 
-<div class="booking-summary">
-  <h2 class="booking-section-title">Créneau choisi</h2>
-  <div class="booking-fields">
-    <p><strong>Client :</strong> <%= @client.name %></p>
-    <p><strong>Enseigne :</strong> <%= booking_enseigne_name(@booking) %></p>
-    <p><strong>Adresse :</strong> <%= booking_enseigne_address(@booking) %></p>
-    <p><strong>Prestation :</strong> <%= @service.name %></p>
-    <p><%= @booking_start_time.strftime("%d/%m/%Y à %H:%M") %></p>
-  </div>
-</div>
+<%= render "booking_summary" %>
 
 <% if @booking.errors.any? %>
   <div class="booking-errors">
@@ -30,34 +21,7 @@
 <% end %>
 
 <% if @booking.persisted? %>
-  <%= form_with model: @booking, url: confirm_booking_path(@client.slug, @booking.pending_access_token), method: :post do |form| %>
-    <div class="field">
-      <label class="field-label" for="booking_customer_first_name">Prénom</label>
-      <%= form.text_field :customer_first_name, required: true, class: "field-input" %>
-    </div>
-
-    <div class="field">
-      <label class="field-label" for="booking_customer_last_name">Nom</label>
-      <%= form.text_field :customer_last_name, required: true, class: "field-input" %>
-    </div>
-
-    <div class="field">
-      <label class="field-label" for="booking_customer_email">Email</label>
-      <%= form.email_field :customer_email, required: true, class: "field-input" %>
-    </div>
-
-    <div class="field">
-      <%= form.submit "Valider la réservation", class: "btn-primary" %>
-    </div>
-  <% end %>
+  <%= render "confirmation_form" %>
 <% else %>
-  <%= form_with url: service_bookings_path(@client.slug, @service), method: :post, local: true do %>
-    <%= hidden_field_tag :enseigne_id, @enseigne.id %>
-    <%= hidden_field_tag :date, @booking_date %>
-    <%= hidden_field_tag :start_time, @booking_start_time.iso8601 %>
-
-    <div class="field">
-      <%= submit_tag "Continuer", class: "btn-primary" %>
-    </div>
-  <% end %>
+  <%= render "pending_preview_form" %>
 <% end %>

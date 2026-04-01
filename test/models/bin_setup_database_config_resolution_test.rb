@@ -1,6 +1,6 @@
 require "test_helper"
 
-load Rails.root.join("bin/setup")
+load Rails.root.join("bin/setup") unless Object.private_method_defined?(:resolve_development_database_config)
 
 class BinSetupDatabaseConfigResolutionTest < ActiveSupport::TestCase
   test "uses development yaml config as-is without DATABASE_URL" do

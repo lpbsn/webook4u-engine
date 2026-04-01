@@ -1,6 +1,7 @@
 SET statement_timeout = 0;
 SET lock_timeout = 0;
 SET idle_in_transaction_session_timeout = 0;
+SET transaction_timeout = 0;
 SET client_encoding = 'UTF8';
 SET standard_conforming_strings = on;
 SELECT pg_catalog.set_config('search_path', '', false);
@@ -132,7 +133,6 @@ CREATE TABLE public.bookings (
     confirmation_token character varying,
     enseigne_id bigint NOT NULL,
     pending_access_token character varying,
-    confirmation_email_sent_at timestamp(6) without time zone,
     CONSTRAINT bookings_confirmed_requires_confirmation_token CHECK ((((booking_status)::text <> 'confirmed'::text) OR (NULLIF(btrim((confirmation_token)::text), ''::text) IS NOT NULL))),
     CONSTRAINT bookings_confirmed_requires_customer_email CHECK ((((booking_status)::text <> 'confirmed'::text) OR (NULLIF(btrim((customer_email)::text), ''::text) IS NOT NULL))),
     CONSTRAINT bookings_confirmed_requires_customer_first_name CHECK ((((booking_status)::text <> 'confirmed'::text) OR (NULLIF(btrim((customer_first_name)::text), ''::text) IS NOT NULL))),
@@ -140,7 +140,7 @@ CREATE TABLE public.bookings (
     CONSTRAINT bookings_end_time_after_start_time CHECK ((booking_end_time > booking_start_time)),
     CONSTRAINT bookings_pending_requires_booking_expires_at CHECK ((((booking_status)::text <> 'pending'::text) OR (booking_expires_at IS NOT NULL))),
     CONSTRAINT bookings_pending_requires_pending_access_token CHECK ((((booking_status)::text <> 'pending'::text) OR (NULLIF(btrim((pending_access_token)::text), ''::text) IS NOT NULL))),
-    CONSTRAINT bookings_status_allowed_values CHECK (((booking_status)::text = ANY (ARRAY[('pending'::character varying)::text, ('confirmed'::character varying)::text, ('failed'::character varying)::text])))
+    CONSTRAINT bookings_status_allowed_values CHECK (((booking_status)::text = ANY ((ARRAY['pending'::character varying, 'confirmed'::character varying, 'failed'::character varying])::text[])))
 );
 
 
@@ -737,6 +737,7 @@ ALTER TABLE ONLY public.bookings
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260402093113'),
 ('20260402060100'),
 ('20260402050000'),
 ('20260402030000'),
@@ -768,3 +769,4 @@ INSERT INTO "schema_migrations" (version) VALUES
 ('20260314081835'),
 ('20260314080003'),
 ('20260314075954');
+

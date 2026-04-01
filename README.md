@@ -32,7 +32,7 @@ Ce repo conserve ces elements pour plus tard, mais ils ne sont pas necessaires a
 - Ruby `3.4.9`
 - Rails `8.1.2`
 - Bundler `2.7.2`
-- PostgreSQL `17`
+- PostgreSQL `17.x`
 
 Verification rapide :
 
@@ -48,7 +48,7 @@ Prerequis locaux reels :
 
 - Ruby `3.4.9`
 - Bundler `2.7.2`
-- PostgreSQL local accessible
+- PostgreSQL `17.x` local accessible
 
 Premier bootstrap local :
 
@@ -151,7 +151,7 @@ bin/rails test test/integration/booking_flow_test.rb
 
 ## Base de donnees locale
 
-Le projet utilise PostgreSQL.
+Le projet utilise PostgreSQL `17.x`.
 
 Configuration locale par defaut :
 
@@ -161,6 +161,12 @@ Configuration locale par defaut :
 Par defaut, `config/database.yml` utilise PostgreSQL local avec l'utilisateur systeme courant si aucun `username` n'est renseigne.
 
 PostgreSQL doit donc etre demarre et accessible en local, sauf configuration specifique via `DATABASE_URL`.
+
+Important :
+
+- le serveur PostgreSQL local doit etre en version `17.x`
+- PostgreSQL `15` et les versions anterieures ne sont pas compatibles avec le `db/structure.sql` courant
+- un client `psql` en version `17.x` ne suffit pas si le serveur local tourne encore en `15`
 
 Le projet utilise `db/structure.sql` comme source de verite operationnelle du schema PostgreSQL.
 
